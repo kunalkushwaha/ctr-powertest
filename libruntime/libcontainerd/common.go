@@ -27,7 +27,8 @@ func GetNewContainerdRuntime(config libruntime.RuntimeConfig, startServer bool) 
 	)
 	//localConfig := runtime2containerd(config)
 	localConfig := server.Config{
-		Root: "/var/lib/powertest",
+		Root:  "/var/lib/powertest",
+		State: "/run/powertest",
 		GRPC: server.GRPCConfig{
 			Address: "/run/powertest/containerd.sock",
 		},
@@ -52,7 +53,7 @@ func GetNewContainerdRuntime(config libruntime.RuntimeConfig, startServer bool) 
 		}
 	}
 	//log := logrus.New()
-	return ContainerdRuntime{serverInstance, client}, nil
+	return &ContainerdRuntime{serverInstance, client}, nil
 }
 
 func runtime2containerd(config libruntime.RuntimeConfig) server.Config {

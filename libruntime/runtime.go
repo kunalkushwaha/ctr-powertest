@@ -35,6 +35,6 @@ type Runtime interface {
 	Runnable(context.Context, Container, containerd.IOCreation) error
 	Start(context.Context, Container) error
 	Exec(context.Context, Container, []string) error
-	Wait(context.Context, Container) (uint32, error)
+	Wait(context.Context, Container) (<-chan containerd.ExitStatus, error)
 	GetContainer(context.Context, string) (Container, error)
 }

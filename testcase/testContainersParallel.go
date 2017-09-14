@@ -67,3 +67,8 @@ func (t ParallelClientSetup) createDeleteContainers(ctx context.Context, id, loo
 	}
 
 }
+
+//TestParallelPullImage Pulls image concurently.
+func (t ParallelClientSetup) TestParallelPullImage(ctx context.Context, image string, wg *sync.WaitGroup) {
+	//
+}

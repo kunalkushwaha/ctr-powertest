@@ -27,6 +27,7 @@ func SetupTestEnvironment(runtime string, config libruntime.RuntimeConfig, clean
 	// Get the runtime.
 	containerdRuntime, err := getRuntime(config)
 	if err != nil {
+		log.Error("Error in getRUntime")
 		return singleClientTest{}, err
 	}
 	return singleClientTest{containerdRuntime}, nil
@@ -113,7 +114,11 @@ func (t singleClientTest) TestCreateContainers(ctx context.Context, containerNam
 
 func (t singleClientTest) TestCreateRunningContainers(ctx context.Context, containerName, imageName string) error {
 	log.Info("TestCreateRunningContainers..")
-	ctr, err := t.Runtime.Run(ctx, containerName, imageName, nil)
+	spec, err := libocispec.GenerateSpec(libocispec.WithProcessArgs("echo", "Hello-world"))
+	if err != nil {
+		return err
+	}
+	ctr, err := t.Runtime.Run(ctx, containerName, imageName, spec)
 	if err != nil {
 		return err
 	}
@@ -151,23 +156,24 @@ func (t singleClientTest) TestContainerOutput(ctx context.Context, containerName
 	}
 	defer t.Runtime.Stop(ctx, container)
 
-	statusC := make(chan uint32, 1)
-	go func() {
-		status, err := t.Runtime.Wait(ctx, container)
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-		statusC <- status
-	}()
+	//statusC := make(chan uint32, 1)
+	//	go func() {
+	statusC, err := t.Runtime.Wait(ctx, container)
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+
+	//}()
 
 	if err := t.Runtime.Start(ctx, container); err != nil {
 		return err
 	}
 
-	status := <-statusC
-	if status != 0 {
-		return fmt.Errorf("expected status 0 but received %d", status)
+	res := <-statusC
+	code, _, _ := res.Result()
+	if code != 0 {
+		return fmt.Errorf("expected status 0 but received %d", res)
 	}
 	if err := t.Runtime.Stop(ctx, container); err != nil {
 		return err

@@ -27,7 +27,7 @@ func GetClient(address string, namespace string) (*containerd.Client, error) {
 }
 
 //Pull the image from remote registry.
-func (c ContainerdRuntime) Pull(ctx context.Context, image string) (libruntime.Image, error) {
+func (c *ContainerdRuntime) Pull(ctx context.Context, image string) (libruntime.Image, error) {
 	img, err := c.cclient.GetImage(ctx, image)
 	if err != nil {
 		img, err = c.cclient.Pull(ctx, image, containerd.WithPullUnpack)
@@ -41,7 +41,7 @@ func (c ContainerdRuntime) Pull(ctx context.Context, image string) (libruntime.I
 }
 
 //Create creates the container from given image.
-func (c ContainerdRuntime) Create(ctx context.Context, containerName, imageName string, specs *runtimespecs.Spec) (libruntime.Container, error) {
+func (c *ContainerdRuntime) Create(ctx context.Context, containerName, imageName string, specs *runtimespecs.Spec) (libruntime.Container, error) {
 	var image containerd.Image
 	image, err := c.cclient.GetImage(ctx, imageName)
 	if err != nil {
@@ -50,7 +50,7 @@ func (c ContainerdRuntime) Create(ctx context.Context, containerName, imageName 
 
 	//If specs not provided, generate default specs.
 	if specs == nil {
-		specs, err = containerd.GenerateSpec(containerd.WithImageConfig(ctx, image))
+		specs, err = containerd.GenerateSpec(ctx, nil, nil)
 		if err != nil {
 			return libruntime.Container{}, err
 		}
@@ -67,7 +67,7 @@ func (c ContainerdRuntime) Create(ctx context.Context, containerName, imageName 
 }
 
 //Run creates and run the task (container instance)
-func (c ContainerdRuntime) Run(ctx context.Context, containerName, imageName string, specs *runtimespecs.Spec) (libruntime.Container, error) {
+func (c *ContainerdRuntime) Run(ctx context.Context, containerName, imageName string, specs *runtimespecs.Spec) (libruntime.Container, error) {
 	var container containerd.Container
 	container, err := c.cclient.LoadContainer(ctx, containerName)
 	if err != nil {
@@ -84,7 +84,9 @@ func (c ContainerdRuntime) Run(ctx context.Context, containerName, imageName str
 
 	//Create task.
 	log.Debug("Creating Task now.")
-	task, err := container.NewTask(ctx, containerd.Stdio)
+	stdout := bytes.NewBuffer(nil)
+	task, err := container.NewTask(ctx, containerd.NewIO(bytes.NewBuffer(nil), stdout, bytes.NewBuffer(nil)))
+	//task, err := container.NewTask(ctx, containerd.Stdio)
 	if err != nil {
 		return libruntime.Container{}, fmt.Errorf("Run : %v ", err)
 	}
@@ -100,7 +102,7 @@ func (c ContainerdRuntime) Run(ctx context.Context, containerName, imageName str
 
 }
 
-func (c ContainerdRuntime) Runnable(ctx context.Context, ctr libruntime.Container, ioCreate containerd.IOCreation) error {
+func (c *ContainerdRuntime) Runnable(ctx context.Context, ctr libruntime.Container, ioCreate containerd.IOCreation) error {
 
 	container, err := c.cclient.LoadContainer(ctx, ctr.ID)
 	if err != nil {
@@ -123,7 +125,7 @@ func (c ContainerdRuntime) Runnable(ctx context.Context, ctr libruntime.Containe
 	return nil
 }
 
-func (c ContainerdRuntime) Start(ctx context.Context, ctr libruntime.Container) error {
+func (c *ContainerdRuntime) Start(ctx context.Context, ctr libruntime.Container) error {
 	container, err := c.cclient.LoadContainer(ctx, ctr.ID)
 	if err != nil {
 		return err
@@ -132,7 +134,7 @@ func (c ContainerdRuntime) Start(ctx context.Context, ctr libruntime.Container) 
 	task, err := container.Task(ctx, nil)
 	if err == nil {
 		status, _ := task.Status(ctx)
-		if status == containerd.Running {
+		if status.Status == containerd.Running {
 			return fmt.Errorf("Container already running")
 		}
 		// Start the task
@@ -146,7 +148,7 @@ func (c ContainerdRuntime) Start(ctx context.Context, ctr libruntime.Container) 
 }
 
 // Stop the task running instance of container
-func (c ContainerdRuntime) Stop(ctx context.Context, ctr libruntime.Container) error {
+func (c *ContainerdRuntime) Stop(ctx context.Context, ctr libruntime.Container) error {
 
 	container, err := c.cclient.LoadContainer(ctx, ctr.ID)
 	if err != nil {
@@ -159,7 +161,7 @@ func (c ContainerdRuntime) Stop(ctx context.Context, ctr libruntime.Container) e
 	}
 
 	status, _ := task.Status(ctx)
-	switch status {
+	switch status.Status {
 
 	case containerd.Stopped:
 		_, err := task.Delete(ctx)
@@ -168,25 +170,24 @@ func (c ContainerdRuntime) Stop(ctx context.Context, ctr libruntime.Container) e
 		}
 	case containerd.Running, containerd.Created: // Created too creates a shim process and need to delete by killing process
 		log.Infof("container.%s function invoked for  %d", status, task.Pid())
-		statusC := make(chan uint32, 1)
-		go func() {
-			status, err := task.Wait(ctx)
-			if err != nil {
-				log.Errorf("container %q: error during wait: %v", task.Pid(), err)
-			}
-			log.Debug("Event has occured")
-			statusC <- status
-		}()
+		statusC, err := task.Wait(ctx)
+		if err != nil {
+			log.Errorf("container %q: error during wait: %v", task.Pid(), err)
+		}
 
-		err := task.Kill(ctx, syscall.SIGKILL)
+		err = task.Kill(ctx, syscall.SIGKILL)
 		if err != nil {
 			task.Delete(ctx)
 			return err
 		}
 		log.Debug("Waiting for event")
 		status := <-statusC
-		if status != 0 {
-			log.Debugf("non-zero container exit code: %d", status)
+		code, _, err := status.Result()
+		if err != nil {
+			return err
+		}
+		if code != 0 {
+			log.Debugf("exited container process: code: %d", status)
 		}
 		_, err = task.Delete(ctx)
 		if err != nil {
@@ -202,27 +203,27 @@ func (c ContainerdRuntime) Stop(ctx context.Context, ctr libruntime.Container) e
 	return nil
 }
 
-func (c ContainerdRuntime) Wait(ctx context.Context, ctr libruntime.Container) (uint32, error) {
+func (c *ContainerdRuntime) Wait(ctx context.Context, ctr libruntime.Container) (<-chan containerd.ExitStatus, error) {
 	container, err := c.cclient.LoadContainer(ctx, ctr.ID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	task, err := container.Task(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("Task Error : %v", err)
+		return nil, fmt.Errorf("Task Error : %v", err)
 	}
 
 	signal, err := task.Wait(ctx)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	return signal, nil
 }
 
 //Delete  the container from filesystem
-func (c ContainerdRuntime) Delete(ctx context.Context, ctr libruntime.Container) error {
+func (c *ContainerdRuntime) Delete(ctx context.Context, ctr libruntime.Container) error {
 	log.Debug("Delete container is invoked.. ", ctr.ID)
 	container, err := c.cclient.LoadContainer(ctx, ctr.ID)
 	if err != nil {
@@ -260,23 +261,28 @@ func (c ContainerdRuntime) Exec(ctx context.Context, ctr libruntime.Container, c
 		return err
 
 	}
-	processStatusC := make(chan uint32, 1)
-	go func() {
-		status, err := process.Wait(ctx)
-		if err != nil {
-			return
-		}
-		processStatusC <- status
-	}()
+
+	//processStatusC := make(chan containerd.ExitStatus)
+	//go func() {
+	processStatusC, err := process.Wait(ctx)
+	if err != nil {
+		return err
+	}
 
 	if err := process.Start(ctx); err != nil {
 		return err
 
 	}
-
 	// wait for the exec to return
-	<-processStatusC
+	status := <-processStatusC
+	code, _, err := status.Result()
+	if err != nil {
 
+		return err
+	}
+	if code != 6 {
+		log.Errorf("expected exec exit code 6 but received %d", code)
+	}
 	_, err = process.Delete(ctx)
 	if err != nil {
 		return err
@@ -287,7 +293,7 @@ func (c ContainerdRuntime) Exec(ctx context.Context, ctr libruntime.Container, c
 }
 
 //GetContainer return the container, if it exists.
-func (c ContainerdRuntime) GetContainer(ctx context.Context, containerName string) (libruntime.Container, error) {
+func (c *ContainerdRuntime) GetContainer(ctx context.Context, containerName string) (libruntime.Container, error) {
 	ctr, err := c.cclient.LoadContainer(ctx, containerName)
 	if err != nil {
 		return libruntime.Container{}, err
@@ -296,7 +302,7 @@ func (c ContainerdRuntime) GetContainer(ctx context.Context, containerName strin
 }
 
 //Version of containerd
-func (c ContainerdRuntime) Version(ctx context.Context) string {
+func (c *ContainerdRuntime) Version(ctx context.Context) string {
 	version, _ := c.cclient.Version(ctx)
 	return "containerd " + version.Version
 }

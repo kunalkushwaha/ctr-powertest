@@ -26,7 +26,7 @@ var config = libruntime.RuntimeConfig{
 
 func init() {
 	RootCmd.AddCommand(basicCmd)
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
