@@ -3,7 +3,6 @@ package libruntime
 import (
 	"context"
 
-	"github.com/containerd/containerd"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -28,13 +27,13 @@ type Runtime interface {
 	//	GetClient(string, string) (Runtime, error)
 	Version(context.Context) string
 	Pull(context.Context, string) (Image, error)
-	Create(context.Context, string, string, *specs.Spec) (Container, error)
-	Run(context.Context, string, string, *specs.Spec) (Container, error)
-	Stop(context.Context, Container) error
-	Delete(context.Context, Container) error
-	Runnable(context.Context, Container, containerd.IOCreation) error
-	Start(context.Context, Container) error
+	Create(context context.Context, containerName string, imageName string, OCISpecs *specs.Spec) (*Container, error)
+	Run(context.Context, string, string, *specs.Spec) (*Container, error)
+	Stop(context.Context, *Container) error
+	Delete(context.Context, *Container) error
+	Runnable(context.Context, *Container) error
+	Start(context.Context, *Container) error
 	Exec(context.Context, Container, []string) error
-	Wait(context.Context, Container) (<-chan containerd.ExitStatus, error)
-	GetContainer(context.Context, string) (Container, error)
+	Wait(context.Context, *Container) (<-chan interface{}, error)
+	GetContainer(context.Context, string) (*Container, error)
 }

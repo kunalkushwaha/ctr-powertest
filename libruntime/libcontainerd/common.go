@@ -1,6 +1,8 @@
 package libcontainerd
 
 import (
+	"log"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/server"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
@@ -38,16 +40,19 @@ func GetNewContainerdRuntime(config libruntime.RuntimeConfig, startServer bool) 
 		},
 	}
 	if startServer {
+
 		serverInstance, err = SetupNewServer(localConfig)
 		if err != nil {
+			log.Fatal("Unable setup server!!", err)
 			return nil, err
 		}
-		client, err = GetClient(localConfig.GRPC.Address, "powertest")
+
+		client, err = GetNewClient(localConfig.GRPC.Address, "powertest")
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		client, err = GetClient(defaultServerGRPCAddress, "powertest")
+		client, err = GetNewClient(defaultServerGRPCAddress, "powertest")
 		if err != nil {
 			return nil, err
 		}

@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"github.com/kunalkushwaha/ctr-powertest/testcase"
 	//	"context"
 	//	"log"
 
 	"context"
 	"log"
 
-	"github.com/kunalkushwaha/ctr-powertest/testcase"
 	"github.com/spf13/cobra"
 )
 
@@ -20,28 +20,21 @@ var parallelCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(parallelCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// parallelCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// parallelCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-
 }
 
 func runParallelTest(cmd *cobra.Command, args []string) {
 
-	testSetup, err := testcase.SetupParallelTestEnvironment(config.RuntimeName, config, false)
+	//Run tests with new  server instance
+	ctrRuntime, err := testcase.SetupTestEnvironment(stdConfig.RuntimeName, stdConfig, false)
 	if err != nil {
 		log.Fatal("Error while setting up environment : ", err)
 	}
 
-	err = testSetup.RunAllTests(context.TODO())
+	var parallelTestCases testcase.Testcases
+	parallelTestCases = &testcase.ParallelContainerTest{Runtime: ctrRuntime}
+	err = parallelTestCases.RunAllTests(context.TODO(), args)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }

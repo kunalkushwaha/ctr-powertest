@@ -19,34 +19,40 @@ var basicCmd = &cobra.Command{
 var config = libruntime.RuntimeConfig{
 	RuntimeName:      "containerd",
 	RunDefaultServer: true,
-	Root:             "/var/lib/powertest", //containerd-ctr-powertest
+	Root:             "/var/lib/powertest",
 	RuntimeEndpoint:  "/run/powertest/containerd.sock",
 	DebugEndpoint:    "/run/powertest/debug.sock",
 }
 
+var stdConfig = libruntime.RuntimeConfig{
+	RuntimeName:      "containerd",
+	RunDefaultServer: false,
+	Root:             "/var/lib/containerd",
+	RuntimeEndpoint:  "/run/containerd/containerd.sock",
+	DebugEndpoint:    "/run/containerd/debug.sock",
+}
+
 func init() {
 	RootCmd.AddCommand(basicCmd)
+
+	//Set Log level
 	log.SetLevel(log.DebugLevel)
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// basicCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// basicCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 }
 
 func runBasicTest(cmd *cobra.Command, args []string) {
 
-	testSetup, err := testcase.SetupTestEnvironment(config.RuntimeName, config, false)
+	//Run tests with new  server instance
+	ctrRuntime, err := testcase.SetupTestEnvironment(stdConfig.RuntimeName, stdConfig, false)
 	if err != nil {
 		log.Fatal("Error while setting up environment : ", err)
 	}
 
-	err = testSetup.RunAllTests(context.TODO())
+	var singleClientTestCases testcase.Testcases
+
+	singleClientTestCases = &testcase.BasicContainerTest{Runtime: ctrRuntime}
+
+	err = singleClientTestCases.RunAllTests(context.TODO(), args)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -41,7 +41,7 @@ func GenerateSpec(opts ...SpecOpts) (*specs.Spec, error) {
 	return s, nil
 }
 
-func defaltCaps() []string {
+func defaultCaps() []string {
 	return []string{
 		"CAP_CHOWN",
 		"CAP_DAC_OVERRIDE",
@@ -95,10 +95,10 @@ func createDefaultSpec() (*specs.Spec, error) {
 				GID: 0,
 			},
 			Capabilities: &specs.LinuxCapabilities{
-				Bounding:    defaltCaps(),
-				Permitted:   defaltCaps(),
-				Inheritable: defaltCaps(),
-				Effective:   defaltCaps(),
+				Bounding:    defaultCaps(),
+				Permitted:   defaultCaps(),
+				Inheritable: defaultCaps(),
+				Effective:   defaultCaps(),
 			},
 			Rlimits: []specs.POSIXRlimit{
 				{

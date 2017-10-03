@@ -4,71 +4,98 @@ import (
 	"context"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
 	log "github.com/sirupsen/logrus"
 )
 
-type ParallelClientSetup struct {
+type ParallelContainerTest struct {
 	Runtime libruntime.Runtime
 }
 
-func SetupParallelTestEnvironment(runtime string, config libruntime.RuntimeConfig, clean bool) (Testcases, error) {
-	//Setup server and client.
-	//Setup the number of threads and itterations to run.
-	containerdRuntime, err := getRuntime(config)
-	if err != nil {
-		return singleClientTest{}, err
-	}
-	return ParallelClientSetup{containerdRuntime}, nil
-}
-
-func (t ParallelClientSetup) RunAllTests(ctx context.Context) error {
+func (t *ParallelContainerTest) RunAllTests(ctx context.Context, args []string) error {
 	//Create and Delete container in loop.
-	if err := t.TestContainerCreateDelete(ctx, 12, 10); err != nil {
+	if err := t.TestContainerCreateDelete(ctx, 10, 20); err != nil {
 		return err
 	}
 	//Run and Stop containers in loop.
 	return nil
 }
 
-func (t ParallelClientSetup) TestContainerCreateDelete(ctx context.Context, parallelCount, loopCount int) error {
+func (t *ParallelContainerTest) TestContainerCreateDelete(ctx context.Context, parallelCount, loopCount int) error {
+	//Make Sure image exist
+	_, err := t.Runtime.Pull(ctx, testImage)
+	if err != nil {
+		return err
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(parallelCount)
+	log.Infof("Creating %d container in %d goroutines", loopCount, parallelCount)
+	startTime := time.Now()
 	for i := 0; i < parallelCount; i++ {
 		go t.createDeleteContainers(ctx, i, loopCount, &wg)
 	}
 	wg.Wait()
+	totalTime := time.Now().Sub(startTime)
+
+	log.Infof("%d containers in %s ", loopCount*parallelCount, totalTime.String())
+	log.Info("OK")
 	return nil
 }
 
-func (t ParallelClientSetup) createDeleteContainers(ctx context.Context, id, loopCount int, wg *sync.WaitGroup) {
+func (t *ParallelContainerTest) createDeleteContainers(ctx context.Context, id, loopCount int, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	//Genertate Specs
 	//Seed random number
 	//Image name
 	for i := 0; i < loopCount; i++ {
-		ctr, err := t.Runtime.Run(ctx, testContainerName+"-"+strconv.Itoa(id+100)+"-"+strconv.Itoa(i+100), testImage, nil)
+
+		ctr, err := t.Runtime.Create(ctx, testContainerName+"-"+strconv.Itoa(id+1020)+"-"+strconv.Itoa(i+1010), testImage, nil)
+		//ctr, err := t.Runtime.Create(ctx, containerName, imageName, specs)
 		if err != nil {
-			log.Debug("Container Run: %v", err)
-			return
+			log.Error(err)
+			return err
 		}
-		log.Info("Container ID : ", ctr.ID)
+
+		err = t.Runtime.Runnable(ctx, ctr)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		statusC, err := t.Runtime.Wait(ctx, ctr)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		err = t.Runtime.Start(ctx, ctr)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		waitForContainerEvent(statusC)
+
 		err = t.Runtime.Stop(ctx, ctr)
 		if err != nil {
-			log.Debug("Container Stop: %v", err)
-			return
+			log.Error(err)
+			return err
 		}
+
 		err = t.Runtime.Delete(ctx, ctr)
 		if err != nil {
-			log.Debug("Container Delete: %v", err)
-			return
+			log.Error(err)
+			return err
 		}
-	}
 
+	}
+	return nil
 }
 
 //TestParallelPullImage Pulls image concurently.
-func (t ParallelClientSetup) TestParallelPullImage(ctx context.Context, image string, wg *sync.WaitGroup) {
+func (t *ParallelContainerTest) TestParallelPullImage(ctx context.Context, image string, wg *sync.WaitGroup) {
 	//
 }

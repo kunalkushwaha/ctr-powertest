@@ -2,6 +2,12 @@ package testcase
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/containerd/containerd"
+	"github.com/kunalkushwaha/ctr-powertest/libruntime"
+	"github.com/kunalkushwaha/ctr-powertest/libruntime/libcontainerd"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -11,5 +17,45 @@ const (
 
 // Testcases interface to implement testcases
 type Testcases interface {
-	RunAllTests(context.Context) error
+	RunAllTests(context context.Context, args []string) error
+}
+
+//SetupTestEnvironment setups server and client for container runtime
+func SetupTestEnvironment(runtime string, config libruntime.RuntimeConfig, clean bool) (libruntime.Runtime, error) {
+
+	//TODO:
+	// if clean {
+	//	cleanup(runtime root folder)
+	//}
+
+	// Get the runtime.
+	ctrRuntime, err := getRuntime(config)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return ctrRuntime, nil
+}
+
+func getRuntime(config libruntime.RuntimeConfig) (libruntime.Runtime, error) {
+	//Get available runtime.
+	if config.RuntimeName == "containerd" {
+		return libcontainerd.GetNewContainerdRuntime(config, config.RunDefaultServer)
+	}
+	return nil, fmt.Errorf("Runtime not supported : %s ", config.RuntimeName)
+}
+
+func waitForContainerEvent(statusC <-chan interface{}) error {
+	status := <-statusC
+	switch p := status.(type) {
+	case containerd.ExitStatus:
+		if p.ExitCode() != 0 {
+			log.Info(p.Result())
+			err := p.Error()
+			return err
+		}
+	default:
+		return fmt.Errorf("Unknow Event")
+	}
+	return nil
 }
