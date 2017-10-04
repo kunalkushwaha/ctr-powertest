@@ -28,7 +28,7 @@ type Runtime interface {
 	Version(context.Context) string
 	Pull(context.Context, string) (Image, error)
 	Create(context context.Context, containerName string, imageName string, OCISpecs *specs.Spec) (*Container, error)
-	Run(context.Context, string, string, *specs.Spec) (*Container, error)
+	Run(context.Context, string, string, *specs.Spec) (<-chan interface{}, *Container, error)
 	Stop(context.Context, *Container) error
 	Delete(context.Context, *Container) error
 	Runnable(context.Context, *Container) error

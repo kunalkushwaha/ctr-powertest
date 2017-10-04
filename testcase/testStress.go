@@ -10,11 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type ParallelContainerTest struct {
+type StressTest struct {
 	Runtime libruntime.Runtime
 }
 
-func (t *ParallelContainerTest) RunAllTests(ctx context.Context, args []string) error {
+func (t *StressTest) RunAllTests(ctx context.Context, args []string) error {
 	//Create and Delete container in loop.
 	if err := t.TestContainerCreateDelete(ctx, 10, 20); err != nil {
 		return err
@@ -23,7 +23,7 @@ func (t *ParallelContainerTest) RunAllTests(ctx context.Context, args []string) 
 	return nil
 }
 
-func (t *ParallelContainerTest) TestContainerCreateDelete(ctx context.Context, parallelCount, loopCount int) error {
+func (t *StressTest) TestContainerCreateDelete(ctx context.Context, parallelCount, loopCount int) error {
 	//Make Sure image exist
 	_, err := t.Runtime.Pull(ctx, testImage)
 	if err != nil {
@@ -45,7 +45,7 @@ func (t *ParallelContainerTest) TestContainerCreateDelete(ctx context.Context, p
 	return nil
 }
 
-func (t *ParallelContainerTest) createDeleteContainers(ctx context.Context, id, loopCount int, wg *sync.WaitGroup) error {
+func (t *StressTest) createDeleteContainers(ctx context.Context, id, loopCount int, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	//Genertate Specs
 	//Seed random number
@@ -96,6 +96,6 @@ func (t *ParallelContainerTest) createDeleteContainers(ctx context.Context, id, 
 }
 
 //TestParallelPullImage Pulls image concurently.
-func (t *ParallelContainerTest) TestParallelPullImage(ctx context.Context, image string, wg *sync.WaitGroup) {
+func (t *StressTest) TestParallelPullImage(ctx context.Context, image string, wg *sync.WaitGroup) {
 	//
 }
