@@ -19,9 +19,12 @@ func (t *BasicContainerTest) RunAllTests(ctx context.Context, args []string) err
 	if err := t.TestPullContainerImage(ctx, testImage); err != nil {
 		return err
 	}
-	//	if err := t.TestCreateContainers(ctx, "test", testImage); err != nil {
-	//		return err
-	//	}
+	if err := t.TestCreateContainers(ctx, "test", testImage); err != nil {
+		return err
+	}
+	if err := t.TestCreateRunningContainers(ctx, testContainerName, testImage); err != nil {
+		return err
+	}
 	if err := t.TestCreateRunningNWaitContainers(ctx, testContainerName, testImage); err != nil {
 		return err
 	}
@@ -54,17 +57,14 @@ func (t *BasicContainerTest) TestCreateContainers(ctx context.Context, container
 	// Test background container.
 	log.Info("TestCreateContainers..")
 	ctr, err := t.Runtime.Create(ctx, containerName, imageName, nil)
-	//	if err != nil {
-	//		return err
-	//	}
-
-	//TODO: WaitForEvent(Created)
+	if err != nil {
+		return err
+	}
 
 	err = t.Runtime.Delete(ctx, ctr)
 	if err != nil {
 		return err
 	}
-	//TODO: WaitForEvent(Deleted)
 	log.Info("OK..")
 	return nil
 }
@@ -72,15 +72,18 @@ func (t *BasicContainerTest) TestCreateContainers(ctx context.Context, container
 func (t *BasicContainerTest) TestCreateRunningContainers(ctx context.Context, containerName, imageName string) error {
 	log.Info("TestCreateRunningContainers..")
 
-	ctr, err := t.Runtime.Run(ctx, containerName, imageName, nil)
+	statusC, ctr, err := t.Runtime.Run(ctx, containerName, imageName, nil)
 	if err != nil {
 		return err
 	}
-	/*	err = t.Runtime.Stop(ctx, *ctr)
-		if err != nil {
-			return fmt.Errorf("Container Stop: %v", err)
-		}
-	*/
+	log.Debug("container stop ...")
+	err = t.Runtime.Stop(ctx, ctr)
+	if err != nil {
+		return fmt.Errorf("Container Stop: %v", err)
+	}
+	log.Debug("going to wait ...")
+	waitForContainerEvent(statusC)
+	log.Debug("done with wait ...")
 	err = t.Runtime.Delete(ctx, ctr)
 	if err != nil {
 		return fmt.Errorf("Container Delete: %v", err)
@@ -91,8 +94,8 @@ func (t *BasicContainerTest) TestCreateRunningContainers(ctx context.Context, co
 }
 
 func (t *BasicContainerTest) TestCreateRunningNWaitContainers(ctx context.Context, containerName, imageName string) error {
-	log.Info("TestCreateRunningContainers..")
-	specs, err := libocispec.GenerateSpec(libocispec.WithProcessArgs("sleep", "20s"))
+	log.Info("TestCreateRunningNWaitContainers..")
+	specs, err := libocispec.GenerateSpec(libocispec.WithProcessArgs("sleep", "5s"))
 	if err != nil {
 		return err
 	}

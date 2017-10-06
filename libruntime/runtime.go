@@ -15,7 +15,8 @@ type RuntimeConfig struct {
 }
 
 type Container struct {
-	ID string
+	ID    string
+	PodID string
 }
 
 type Image struct {

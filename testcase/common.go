@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kunalkushwaha/ctr-powertest/libruntime/libcrio"
+
 	"github.com/containerd/containerd"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime/libcontainerd"
@@ -39,13 +41,20 @@ func SetupTestEnvironment(runtime string, config libruntime.RuntimeConfig, clean
 
 func getRuntime(config libruntime.RuntimeConfig) (libruntime.Runtime, error) {
 	//Get available runtime.
-	if config.RuntimeName == "containerd" {
+	switch config.RuntimeName {
+	case "containerd":
 		return libcontainerd.GetNewContainerdRuntime(config, config.RunDefaultServer)
+	case "crio":
+		return libcrio.GetNewCRIORuntime(config, false)
+
 	}
 	return nil, fmt.Errorf("Runtime not supported : %s ", config.RuntimeName)
 }
 
 func waitForContainerEvent(statusC <-chan interface{}) error {
+	if statusC == nil {
+		return nil
+	}
 	status := <-statusC
 	switch p := status.(type) {
 	case containerd.ExitStatus:

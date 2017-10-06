@@ -15,11 +15,12 @@ type StressTest struct {
 }
 
 func (t *StressTest) RunAllTests(ctx context.Context, args []string) error {
+	log.Info("Running tests on ", t.Runtime.Version(ctx))
 	//Create and Delete container in loop.
-	if err := t.TestContainerCreateDelete(ctx, 10, 20); err != nil {
+	if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
 		return err
 	}
-	//Run and Stop containers in loop.
+
 	return nil
 }
 
@@ -39,8 +40,8 @@ func (t *StressTest) TestContainerCreateDelete(ctx context.Context, parallelCoun
 	}
 	wg.Wait()
 	totalTime := time.Now().Sub(startTime)
-
 	log.Infof("%d containers in %s ", loopCount*parallelCount, totalTime.String())
+
 	log.Info("OK")
 	return nil
 }
@@ -95,7 +96,9 @@ func (t *StressTest) createDeleteContainers(ctx context.Context, id, loopCount i
 	return nil
 }
 
-//TestParallelPullImage Pulls image concurently.
-func (t *StressTest) TestParallelPullImage(ctx context.Context, image string, wg *sync.WaitGroup) {
-	//
-}
+/*
+	TODO:
+	- Parallel pull images
+	- Pull &delete images at same time
+	- Delete and Exec Containers
+*/

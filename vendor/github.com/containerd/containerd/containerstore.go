@@ -15,7 +15,6 @@ type remoteContainers struct {
 
 var _ containers.Store = &remoteContainers{}
 
-// NewRemoteContainerStore returns the container Store connected with the provided client
 func NewRemoteContainerStore(client containersapi.ContainersClient) containers.Store {
 	return &remoteContainers{
 		client: client,

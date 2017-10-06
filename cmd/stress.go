@@ -13,26 +13,21 @@ import (
 
 // parallelCmd represents the parallel command
 var parallelCmd = &cobra.Command{
-	Use:   "parallel",
+	Use:   "stress",
 	Short: "Run container tests in parallel (Stress Test)",
-	Run:   runParallelTest,
+	Run:   runStressTest,
 }
 
 func init() {
 	RootCmd.AddCommand(parallelCmd)
 }
 
-func runParallelTest(cmd *cobra.Command, args []string) {
+func runStressTest(cmd *cobra.Command, args []string) {
+	initTestSuite(cmd)
 
-	//Run tests with new  server instance
-	ctrRuntime, err := testcase.SetupTestEnvironment(stdConfig.RuntimeName, stdConfig, false)
-	if err != nil {
-		log.Fatal("Error while setting up environment : ", err)
-	}
-
-	var parallelTestCases testcase.Testcases
-	parallelTestCases = &testcase.ParallelContainerTest{Runtime: ctrRuntime}
-	err = parallelTestCases.RunAllTests(context.TODO(), args)
+	var stressTestCases testcase.Testcases
+	stressTestCases = &testcase.StressTest{Runtime: ctrRuntime}
+	err := stressTestCases.RunAllTests(context.TODO(), args)
 	if err != nil {
 		log.Fatal(err)
 	}
