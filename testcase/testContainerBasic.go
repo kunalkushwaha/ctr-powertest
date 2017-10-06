@@ -76,14 +76,14 @@ func (t *BasicContainerTest) TestCreateRunningContainers(ctx context.Context, co
 	if err != nil {
 		return err
 	}
-	log.Debug("container stop ...")
+
 	err = t.Runtime.Stop(ctx, ctr)
 	if err != nil {
 		return fmt.Errorf("Container Stop: %v", err)
 	}
-	log.Debug("going to wait ...")
+
 	waitForContainerEvent(statusC)
-	log.Debug("done with wait ...")
+
 	err = t.Runtime.Delete(ctx, ctr)
 	if err != nil {
 		return fmt.Errorf("Container Delete: %v", err)

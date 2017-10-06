@@ -99,6 +99,6 @@ func (t *StressTest) createDeleteContainers(ctx context.Context, id, loopCount i
 /*
 	TODO:
 	- Parallel pull images
-	- Pull &delete images at same time
+	- Pull & delete images at same time
 	- Delete and Exec Containers
 */

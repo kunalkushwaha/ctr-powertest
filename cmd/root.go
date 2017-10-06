@@ -52,4 +52,5 @@ func Execute() {
 func init() {
 
 	RootCmd.PersistentFlags().StringP("runtime", "r", "containerd", "runtime [ containerd|crio ]")
+	RootCmd.PersistentFlags().BoolP("debug", "d", false, "debug mode")
 }

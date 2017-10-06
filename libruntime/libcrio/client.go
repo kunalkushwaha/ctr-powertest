@@ -78,8 +78,6 @@ func (cr *CRIORuntime) Create(ctx context.Context, containerName string, imageNa
 	r, err := (*cr.RuntimeClient).CreateContainer(ctx, &pb.CreateContainerRequest{
 		PodSandboxId: podID,
 		Config:       config,
-		// TODO(runcom): this is missing PodSandboxConfig!!!
-		// we should/could find a way to retrieve it from the fs and set it here
 	})
 	if err != nil {
 		return nil, err
@@ -166,7 +164,7 @@ func (cr *CRIORuntime) CreateSandbox(ctx context.Context, podName, podID, config
 	if err != nil {
 		return "", err
 	}
-	log.Info("Pod Created: ", r.PodSandboxId)
+	log.Debug("Pod Created: ", r.PodSandboxId)
 
 	return r.PodSandboxId, nil
 }
