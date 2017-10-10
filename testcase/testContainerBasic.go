@@ -3,6 +3,7 @@ package testcase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/kunalkushwaha/ctr-powertest/libocispec"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
@@ -71,7 +72,7 @@ func (t *BasicContainerTest) TestCreateContainers(ctx context.Context, container
 
 func (t *BasicContainerTest) TestCreateRunningContainers(ctx context.Context, containerName, imageName string) error {
 	log.Info("TestCreateRunningContainers..")
-
+	startTime := time.Now()
 	statusC, ctr, err := t.Runtime.Run(ctx, containerName, imageName, nil)
 	if err != nil {
 		return err
@@ -88,7 +89,8 @@ func (t *BasicContainerTest) TestCreateRunningContainers(ctx context.Context, co
 	if err != nil {
 		return fmt.Errorf("Container Delete: %v", err)
 	}
-
+	totalTime := time.Now().Sub(startTime)
+	log.Infof("%d containers in %s ", 1, totalTime.String())
 	log.Info("OK..")
 	return nil
 }

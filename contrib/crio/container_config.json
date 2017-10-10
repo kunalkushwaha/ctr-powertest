@@ -7,7 +7,7 @@
 		"image": "alpine:latest"
 	},
 	"command": [
-		"/bin/ls"
+		"/bin/sh"
 	],
 	"args": [],
 	"working_dir": "/",

@@ -15,9 +15,6 @@ var basicCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(basicCmd)
-
-	//Set Log level
-	log.SetLevel(log.DebugLevel)
 }
 
 func runBasicTest(cmd *cobra.Command, args []string) {

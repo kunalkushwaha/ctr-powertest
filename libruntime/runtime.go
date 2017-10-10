@@ -26,8 +26,6 @@ type Image struct {
 }
 
 type Runtime interface {
-	//	NewServer(RuntimeConfig)
-	//	GetClient(string, string) (Runtime, error)
 	Version(context.Context) string
 	Pull(context.Context, string) (Image, error)
 	RemoveImage(ctx context.Context, imageName string) error

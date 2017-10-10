@@ -13,13 +13,6 @@ import (
 func SetupNewServer(config server.Config) (*server.Server, error) {
 
 	ctx := context.TODO()
-	/*	file, err := os.OpenFile("logrus.log", os.O_CREATE|os.O_WRONLY, 0666)
-		if err == nil {
-			logrus.SetOutput(file)
-		} else {
-			logrus.Info("Failed to log to file, using default stderr")
-		}
-	*/
 
 	serverInstance, err := server.New(ctx, &config)
 	if err != nil {
@@ -48,8 +41,7 @@ func SetupNewServer(config server.Config) (*server.Server, error) {
 		}
 		serve(ctx, l, serverInstance.ServeGRPC)
 	}
-	//log.G(ctx).Infof("containerd successfully booted in %fs", time.Since(start).Seconds())
-	//	return handleSignals(ctx, signals, server)
+
 	return serverInstance, nil
 }
 
