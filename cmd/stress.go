@@ -25,8 +25,7 @@ func init() {
 func runStressTest(cmd *cobra.Command, args []string) {
 	initTestSuite(cmd)
 
-	var stressTestCases testcase.Testcases
-	stressTestCases = &testcase.StressTest{Runtime: ctrRuntime}
+	stressTestCases := &testcase.StressTest{Runtime: ctrRuntime}
 	err := stressTestCases.RunAllTests(context.TODO(), args)
 	if err != nil {
 		log.Fatal(err)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
+	log "github.com/sirupsen/logrus"
 	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
 )
 
@@ -36,16 +37,21 @@ func GetNewCRIORuntime(config libruntime.RuntimeConfig, startServer bool) (libru
 	if startServer {
 
 	} else {
-		runtimeClient, err = GetNewRuntimeClient("/var/run/crio.sock", time.Duration(100*time.Second))
+		//cri - containerd
+		runtimeClient, err = GetNewRuntimeClient("/var/run/cri-containerd.sock", time.Duration(100*time.Second))
+		//runtimeClient, err = GetNewRuntimeClient("/var/run/crio.sock", time.Duration(100*time.Second))
 		if err != nil {
+			log.Error("Could not initialize runtimeClient")
 			return nil, err
 		}
-		imageClient, err = GetNewImageClient("/var/run/crio.sock", time.Duration(100*time.Second))
+		imageClient, err = GetNewImageClient("/var/run/cri-containerd.sock", time.Duration(100*time.Second))
+		//imageClient, err = GetNewImageClient("/var/run/crio.sock", time.Duration(100*time.Second))
 		if err != nil {
+			log.Error("Could not initialize runtimeClient")
 			return nil, err
 		}
 	}
-	//log := logrus.New()
+
 	return &CRIORuntime{RuntimeClient: runtimeClient, ImageClient: imageClient}, nil
 }
 

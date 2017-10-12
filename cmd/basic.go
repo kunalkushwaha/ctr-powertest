@@ -24,9 +24,8 @@ func init() {
 
 func runBasicTest(cmd *cobra.Command, args []string) {
 	initTestSuite(cmd)
-	var singleClientTestCases testcase.Testcases
 
-	singleClientTestCases = &testcase.BasicContainerTest{Runtime: ctrRuntime}
+	singleClientTestCases := &testcase.BasicContainerTest{Runtime: ctrRuntime}
 
 	err := singleClientTestCases.RunAllTests(context.TODO(), args)
 	if err != nil {

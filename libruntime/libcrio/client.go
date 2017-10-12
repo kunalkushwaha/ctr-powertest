@@ -62,7 +62,7 @@ func (cr *CRIORuntime) Pull(ctx context.Context, imageName string) (libruntime.I
 func (cr *CRIORuntime) Create(ctx context.Context, containerName string, imageName string, OCISpecs *runtimespecs.Spec) (*libruntime.Container, error) {
 
 	//TODO : Check if pod exist
-	podID, err := cr.CreateSandbox(ctx, defaultSandboxName, defaultPodID, defaultSanboxConfig)
+	podID, err := cr.CreateSandbox(ctx, "pod"+containerName, defaultPodID, defaultSanboxConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -74,14 +74,22 @@ func (cr *CRIORuntime) Create(ctx context.Context, containerName string, imageNa
 	if err != nil {
 		return nil, err
 	}
-
+	config.Metadata.Name = containerName
+	sandboxConfig, err := loadPodSandboxConfig(defaultSanboxConfig)
+	if err != nil {
+		return nil, err
+	}
+	//	startTime := time.Now()
 	r, err := (*cr.RuntimeClient).CreateContainer(ctx, &pb.CreateContainerRequest{
-		PodSandboxId: podID,
-		Config:       config,
+		PodSandboxId:  podID,
+		Config:        config,
+		SandboxConfig: sandboxConfig,
 	})
 	if err != nil {
 		return nil, err
 	}
+	//	totalTime := time.Now().Sub(startTime)
+	//	log.Infof("Container Create time %s ", totalTime.String())
 	log.Debug(r.ContainerId)
 
 	return &libruntime.Container{ID: r.ContainerId, PodID: podID}, nil
@@ -92,18 +100,20 @@ func (cr *CRIORuntime) Run(ctx context.Context, containerName string, imageName 
 	if err != nil {
 		return nil, nil, err
 	}
-
+	//	startTime := time.Now()
 	err = cr.Start(ctx, ctr)
 	if err != nil {
 		return nil, nil, err
 	}
-
+	//	totalTime := time.Now().Sub(startTime)
+	//	log.Infof("Container Run time %s ", totalTime.String())
 	return nil, ctr, nil
 }
 func (cr *CRIORuntime) Stop(ctx context.Context, ctr *libruntime.Container) error {
 	if ctr.ID == "" {
 		return fmt.Errorf("Container ID cannot be empty")
 	}
+	//	startTime := time.Now()
 	_, err := (*cr.RuntimeClient).StopContainer(ctx, &pb.StopContainerRequest{
 		ContainerId: ctr.ID,
 		Timeout:     10,
@@ -111,19 +121,23 @@ func (cr *CRIORuntime) Stop(ctx context.Context, ctr *libruntime.Container) erro
 	if err != nil {
 		return err
 	}
-
+	//	totalTime := time.Now().Sub(startTime)
+	//	log.Infof("Container Stop time %s ", totalTime.String())
 	return err
 }
 func (cr *CRIORuntime) Delete(ctx context.Context, ctr *libruntime.Container) error {
 	if ctr.ID == "" {
 		return fmt.Errorf("Container ID cannot be empty")
 	}
+	//	startTime := time.Now()
 	_, err := (*cr.RuntimeClient).RemoveContainer(ctx, &pb.RemoveContainerRequest{
 		ContainerId: ctr.ID,
 	})
 	if err != nil {
 		return nil
 	}
+	//	totalTime := time.Now().Sub(startTime)
+	//	log.Infof("Container Delete time %s ", totalTime.String())
 	err = cr.StopPodSandbox(ctx, ctr.PodID)
 	if err != nil {
 		return err
@@ -159,6 +173,7 @@ func (cr *CRIORuntime) CreateSandbox(ctx context.Context, podName, podID, config
 	if err != nil {
 		return "", err
 	}
+	config.Metadata.Name = podName
 
 	r, err := (*cr.RuntimeClient).RunPodSandbox(ctx, &pb.RunPodSandboxRequest{Config: config})
 	if err != nil {

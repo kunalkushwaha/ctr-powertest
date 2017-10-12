@@ -20,6 +20,9 @@ func (t *StressTest) RunAllTests(ctx context.Context, args []string) error {
 	if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
 		return err
 	}
+	if err := t.TestImagePull(ctx, 4, "docker.io/library/ubuntu:latest"); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -54,7 +57,6 @@ func (t *StressTest) createDeleteContainers(ctx context.Context, id, loopCount i
 	for i := 0; i < loopCount; i++ {
 
 		ctr, err := t.Runtime.Create(ctx, testContainerName+"-"+strconv.Itoa(id+1020)+"-"+strconv.Itoa(i+1010), testImage, nil)
-		//ctr, err := t.Runtime.Create(ctx, containerName, imageName, specs)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -96,9 +98,32 @@ func (t *StressTest) createDeleteContainers(ctx context.Context, id, loopCount i
 	return nil
 }
 
+func (t *StressTest) TestImagePull(ctx context.Context, parallelCount int, imageName string) error {
+	var wg sync.WaitGroup
+	wg.Add(parallelCount)
+	log.Infof("Pulling image in %d goroutines", parallelCount)
+
+	for i := 0; i < parallelCount; i++ {
+		go t.pullImage(ctx, imageName, &wg)
+	}
+	wg.Wait()
+	log.Info("OK")
+	return nil
+}
+
+func (t *StressTest) pullImage(ctx context.Context, imageName string, wg *sync.WaitGroup) error {
+	defer wg.Done()
+	_, err := t.Runtime.Pull(ctx, imageName)
+	if err != nil {
+		log.Error("Image pull error : ", err)
+		return err
+	}
+	return nil
+}
+
 /*
 	TODO:
-	- Parallel pull images
+
 	- Pull & delete images at same time
 	- Delete and Exec Containers
 */
