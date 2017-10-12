@@ -51,6 +51,7 @@ func Execute() {
 
 func init() {
 
-	RootCmd.PersistentFlags().StringP("runtime", "r", "containerd", "runtime [ containerd|crio ]")
+	RootCmd.PersistentFlags().StringP("proto", "p", "containerd", "Protocol [ containerd, cri ]")
+	RootCmd.PersistentFlags().StringP("runtime", "r", "cri-containerd", "CRI-Runtime [ cri-containerd, crio ]")
 	RootCmd.PersistentFlags().BoolP("debug", "d", false, "debug mode")
 }

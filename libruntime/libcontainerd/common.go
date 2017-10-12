@@ -1,17 +1,9 @@
 package libcontainerd
 
 import (
-	"log"
-
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/server"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
-)
-
-const (
-	defaultServerGRPCAddress = "/run/containerd/containerd.sock"
-	defaultRoot              = "/var/lib/powertest"
-	testImage                = "docker.io/library/alpine:latest"
 )
 
 //ContainerdRuntime implements all containerd funtions
@@ -27,37 +19,13 @@ func GetNewContainerdRuntime(config libruntime.RuntimeConfig, startServer bool) 
 		client         *containerd.Client
 		err            error
 	)
+	//TODO: build containerd-config and have opten to start server too
 	//localConfig := runtime2containerd(config)
-	localConfig := server.Config{
-		Root:  "/var/lib/powertest",
-		State: "/run/powertest",
-		GRPC: server.GRPCConfig{
-			Address: "/run/powertest/containerd.sock",
-		},
-		Debug: server.Debug{
-			Level:   "info",
-			Address: "/run/powertest/debug.sock",
-		},
-	}
-	if startServer {
 
-		serverInstance, err = SetupNewServer(localConfig)
-		if err != nil {
-			log.Fatal("Unable setup server!!", err)
-			return nil, err
-		}
-
-		client, err = GetNewClient(localConfig.GRPC.Address, "powertest")
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		client, err = GetNewClient(defaultServerGRPCAddress, "powertest")
-		if err != nil {
-			return nil, err
-		}
+	client, err = GetNewClient(config.RuntimeEndpoint, "powertest")
+	if err != nil {
+		return nil, err
 	}
-	//log := logrus.New()
 	return &ContainerdRuntime{serverInstance, client}, nil
 }
 

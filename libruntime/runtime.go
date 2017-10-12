@@ -10,8 +10,10 @@ type RuntimeConfig struct {
 	RuntimeName      string
 	RunDefaultServer bool
 	Root             string
+	State            string
 	RuntimeEndpoint  string
 	DebugEndpoint    string
+	DebugLevel       string
 }
 
 type Container struct {

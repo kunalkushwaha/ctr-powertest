@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"github.com/kunalkushwaha/ctr-powertest/testcase"
-	//	"context"
-	//	"log"
 
 	"context"
 	"log"

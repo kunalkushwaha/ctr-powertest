@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kunalkushwaha/ctr-powertest/libruntime/libcrio"
+	"github.com/kunalkushwaha/ctr-powertest/libruntime/libcri"
 
 	"github.com/containerd/containerd"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
@@ -23,7 +23,7 @@ type Testcases interface {
 }
 
 //SetupTestEnvironment setups server and client for container runtime
-func SetupTestEnvironment(runtime string, config libruntime.RuntimeConfig, clean bool) (libruntime.Runtime, error) {
+func SetupTestEnvironment(proto string, config libruntime.RuntimeConfig, clean bool) (libruntime.Runtime, error) {
 
 	//TODO:
 	// if clean {
@@ -31,7 +31,7 @@ func SetupTestEnvironment(runtime string, config libruntime.RuntimeConfig, clean
 	//}
 
 	// Get the runtime.
-	ctrRuntime, err := getRuntime(config)
+	ctrRuntime, err := getRuntime(proto, config)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -39,16 +39,16 @@ func SetupTestEnvironment(runtime string, config libruntime.RuntimeConfig, clean
 	return ctrRuntime, nil
 }
 
-func getRuntime(config libruntime.RuntimeConfig) (libruntime.Runtime, error) {
+func getRuntime(proto string, config libruntime.RuntimeConfig) (libruntime.Runtime, error) {
 	//Get available runtime.
-	switch config.RuntimeName {
+	switch proto {
 	case "containerd":
 		return libcontainerd.GetNewContainerdRuntime(config, config.RunDefaultServer)
-	case "crio":
-		return libcrio.GetNewCRIORuntime(config, false)
+	case "cri":
+		return libcri.GetNewCRIRuntime(config, false)
 
 	}
-	return nil, fmt.Errorf("Runtime not supported : %s ", config.RuntimeName)
+	return nil, fmt.Errorf("Proto not supported : %s ", proto)
 }
 
 func waitForContainerEvent(statusC <-chan interface{}) error {
