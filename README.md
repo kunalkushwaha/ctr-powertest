@@ -72,6 +72,20 @@ Flags:
 
 ```
 
+#### Performace:
+
+Below is some performace numbers as of ``Oct 12, 2017``
+
+![Perfomance](Performance.jpg)
+* _All using same runc version_
+
+```
+runc version 1.0.0-rc4+dev
+commit: f53ad9cec928821a25c2a74eb8bd95558f8cf152
+spec: 1.0.0
+```
+
+
 #### Important TODO:
 - Implement ``Exec`` interface for CRI and containerd.
 - Implement ``Wait`` & ``Kill`` for CRI
