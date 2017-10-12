@@ -17,22 +17,26 @@ type StressTest struct {
 var testCaseMap map[string]bool
 
 func (t *StressTest) RunAllTests(ctx context.Context, args []string) error {
-
-	testCaseMap = map[string]bool{
-		"container-create-delete": false,
-		"image-pull":              false,
-	}
+	log.Info("Running tests on ", t.Runtime.Version(ctx))
 
 	for _, arg := range args {
-		testCaseMap[arg] = true
+		switch arg {
+		case "container-create-delete":
+			if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
+				return err
+			}
+		case "image-pull":
+			if err := t.TestImagePull(ctx, 4, "docker.io/library/ubuntu:latest"); err != nil {
+				return err
+			}
+		}
 	}
-	log.Info("Running tests on ", t.Runtime.Version(ctx))
 
 	if len(args) == 0 {
 
-		//	if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
-		//		return err
-		//	}
+		if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
+			return err
+		}
 		if err := t.TestImagePull(ctx, 4, "docker.io/library/ubuntu:latest"); err != nil {
 			return err
 		}

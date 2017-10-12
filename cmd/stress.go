@@ -11,9 +11,10 @@ import (
 
 // parallelCmd represents the parallel command
 var parallelCmd = &cobra.Command{
-	Use:   "stress",
-	Short: "Run container tests in parallel (Stress Test)",
-	Run:   runStressTest,
+	Use:     "stress",
+	Short:   "Run container tests in parallel (Stress Test)",
+	Example: "sudo ctr-powertest -p containerd stress image-pull",
+	Run:     runStressTest,
 }
 
 func init() {
