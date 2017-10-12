@@ -14,14 +14,28 @@ type StressTest struct {
 	Runtime libruntime.Runtime
 }
 
+var testCaseMap map[string]bool
+
 func (t *StressTest) RunAllTests(ctx context.Context, args []string) error {
-	log.Info("Running tests on ", t.Runtime.Version(ctx))
-	//Create and Delete container in loop.
-	if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
-		return err
+
+	testCaseMap = map[string]bool{
+		"container-create-delete": false,
+		"image-pull":              false,
 	}
-	if err := t.TestImagePull(ctx, 4, "docker.io/library/ubuntu:latest"); err != nil {
-		return err
+
+	for _, arg := range args {
+		testCaseMap[arg] = true
+	}
+	log.Info("Running tests on ", t.Runtime.Version(ctx))
+
+	if len(args) == 0 {
+
+		//	if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
+		//		return err
+		//	}
+		if err := t.TestImagePull(ctx, 4, "docker.io/library/ubuntu:latest"); err != nil {
+			return err
+		}
 	}
 
 	return nil
