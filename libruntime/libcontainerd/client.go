@@ -39,6 +39,16 @@ func (cr *ContainerdRuntime) Pull(ctx context.Context, image string) (libruntime
 	return libruntime.Image{Name: img.Name()}, nil
 }
 
+//RemoveImage from remote registry.
+func (cr *ContainerdRuntime) RemoveImage(ctx context.Context, image string) error {
+
+	err := cr.cclient.ImageService().Delete(ctx, image)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 //Run creates and run the task (container instance)
 func (cr *ContainerdRuntime) Run(ctx context.Context, containerName, imageName string, specs *runtimespecs.Spec) (<-chan interface{}, *libruntime.Container, error) {
 

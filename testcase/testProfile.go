@@ -13,7 +13,7 @@ type ProfileContainerTest struct {
 	Runtime libruntime.Runtime
 }
 
-func (t *ProfileContainerTest) RunAllTests(ctx context.Context, args []string) error {
+func (t *ProfileContainerTest) RunTestCases(ctx context.Context, testcases, args []string) error {
 
 	log.Info("Running tests on ", t.Runtime.Version(ctx))
 	if err := t.TestPullContainerImage(ctx, testImage); err != nil {

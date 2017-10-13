@@ -27,7 +27,7 @@ func runBasicTest(cmd *cobra.Command, args []string) {
 
 	singleClientTestCases := &testcase.BasicContainerTest{Runtime: ctrRuntime}
 
-	err := singleClientTestCases.RunAllTests(context.TODO(), args)
+	err := singleClientTestCases.RunTestCases(context.TODO(), nil, args)
 	if err != nil {
 		log.Fatal(err)
 	}

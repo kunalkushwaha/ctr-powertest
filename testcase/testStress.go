@@ -16,28 +16,35 @@ type StressTest struct {
 
 var testCaseMap map[string]bool
 
-func (t *StressTest) RunAllTests(ctx context.Context, args []string) error {
+func (t *StressTest) RunTestCases(ctx context.Context, testcases, args []string) error {
 	log.Info("Running tests on ", t.Runtime.Version(ctx))
 
-	for _, arg := range args {
-		switch arg {
+	for _, test := range testcases {
+		switch test {
 		case "container-create-delete":
 			if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
 				return err
 			}
 		case "image-pull":
-			if err := t.TestImagePull(ctx, 4, "docker.io/library/ubuntu:latest"); err != nil {
+			var imageName string
+			if len(args) == 0 {
+				imageName = "docker.io/library/golang:latest"
+			} else {
+				imageName = string(args[0])
+			}
+
+			if err := t.TestImagePull(ctx, 4, imageName); err != nil {
 				return err
 			}
 		}
 	}
 
-	if len(args) == 0 {
+	if len(testcases) == 0 {
 
 		if err := t.TestContainerCreateDelete(ctx, 4, 50); err != nil {
 			return err
 		}
-		if err := t.TestImagePull(ctx, 4, "docker.io/library/ubuntu:latest"); err != nil {
+		if err := t.TestImagePull(ctx, 4, "docker.io/library/golang:latest"); err != nil {
 			return err
 		}
 	}
@@ -125,6 +132,7 @@ func (t *StressTest) TestImagePull(ctx context.Context, parallelCount int, image
 		go t.pullImage(ctx, imageName, &wg)
 	}
 	wg.Wait()
+	t.Runtime.RemoveImage(ctx, imageName)
 	log.Info("OK")
 	return nil
 }

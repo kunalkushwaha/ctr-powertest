@@ -13,7 +13,7 @@ type BasicContainerTest struct {
 	Runtime libruntime.Runtime
 }
 
-func (t *BasicContainerTest) RunAllTests(ctx context.Context, args []string) error {
+func (t *BasicContainerTest) RunTestCases(ctx context.Context, testcases, args []string) error {
 
 	log.Info("Running tests on ", t.Runtime.Version(ctx))
 	if err := t.TestPullContainerImage(ctx, testImage); err != nil {

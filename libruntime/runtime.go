@@ -30,6 +30,7 @@ type Runtime interface {
 	//	GetClient(string, string) (Runtime, error)
 	Version(context.Context) string
 	Pull(context.Context, string) (Image, error)
+	RemoveImage(ctx context.Context, imageName string) error
 	Create(context context.Context, containerName string, imageName string, OCISpecs *specs.Spec) (*Container, error)
 	Run(context.Context, string, string, *specs.Spec) (<-chan interface{}, *Container, error)
 	Stop(context.Context, *Container) error

@@ -18,7 +18,7 @@ var profileCmd = &cobra.Command{
 		initTestSuite(cmd)
 
 		profileTestCases := &testcase.ProfileContainerTest{Runtime: ctrRuntime}
-		err := profileTestCases.RunAllTests(context.TODO(), args)
+		err := profileTestCases.RunTestCases(context.TODO(), nil, args)
 		if err != nil {
 			log.Fatal(err)
 		}

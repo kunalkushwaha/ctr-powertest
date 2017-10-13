@@ -59,6 +59,16 @@ func (cr *CRIRuntime) Pull(ctx context.Context, imageName string) (libruntime.Im
 	return libruntime.Image{Name: img.ImageRef}, nil
 }
 
+func (cr *CRIRuntime) RemoveImage(ctx context.Context, imageName string) error {
+
+	_, err := (*cr.ImageClient).RemoveImage(ctx, &pb.RemoveImageRequest{Image: &pb.ImageSpec{Image: imageName}})
+	if err != nil {
+		return fmt.Errorf("Removing image failed: %v", err)
+	}
+
+	return nil
+}
+
 func (cr *CRIRuntime) Create(ctx context.Context, containerName string, imageName string, OCISpecs *runtimespecs.Spec) (*libruntime.Container, error) {
 
 	//TODO : Check if pod exist

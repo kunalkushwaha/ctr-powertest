@@ -10,7 +10,7 @@ import (
 )
 
 // parallelCmd represents the parallel command
-var parallelCmd = &cobra.Command{
+var stressCmd = &cobra.Command{
 	Use:     "stress",
 	Short:   "Run container tests in parallel (Stress Test)",
 	Example: "sudo ctr-powertest -p containerd stress image-pull",
@@ -18,14 +18,17 @@ var parallelCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(parallelCmd)
+	RootCmd.AddCommand(stressCmd)
+
+	stressCmd.Flags().StringSliceP("testcase", "t", nil, "Testcases to run [container-create-delete | image-pull]")
 }
 
 func runStressTest(cmd *cobra.Command, args []string) {
 	initTestSuite(cmd)
 
+	testcases, _ := cmd.Flags().GetStringSlice("testcase")
 	stressTestCases := &testcase.StressTest{Runtime: ctrRuntime}
-	err := stressTestCases.RunAllTests(context.TODO(), args)
+	err := stressTestCases.RunTestCases(context.TODO(), testcases, args)
 	if err != nil {
 		log.Fatal(err)
 	}

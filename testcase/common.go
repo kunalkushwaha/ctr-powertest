@@ -19,7 +19,7 @@ const (
 
 // Testcases interface to implement testcases
 type Testcases interface {
-	RunAllTests(context context.Context, args []string) error
+	RunTestCases(context context.Context, testcases, args []string) error
 }
 
 //SetupTestEnvironment setups server and client for container runtime
