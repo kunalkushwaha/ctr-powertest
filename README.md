@@ -17,11 +17,11 @@ Currently supports
 
 Usage:
 
-`` ctr-powertest -p <protocol> [-r <runtime>] <test-cases> [args]``
+`` ctr-powertest -p <protocol> [-r <runtime>] <test-cases> [flags] [args]``
 
 Usage Example:
 
-`` ctr-powertest -p cri -r cri-containerd stress image-pull``
+`` ctr-powertest -p cri -r cri-containerd stress -t image-pull``
 
 
 Examples
