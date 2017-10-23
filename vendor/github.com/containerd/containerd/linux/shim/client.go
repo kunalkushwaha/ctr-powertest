@@ -27,10 +27,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+// ClientOpt is an option for a shim client configuration
 type ClientOpt func(context.Context, Config) (shim.ShimClient, io.Closer, error)
 
 // WithStart executes a new shim process
-func WithStart(binary, address, daemonAddress, cgroup string, debug bool, exitHandler func()) ClientOpt {
+func WithStart(binary, address, daemonAddress, cgroup string, nonewns, debug bool, exitHandler func()) ClientOpt {
 	return func(ctx context.Context, config Config) (_ shim.ShimClient, _ io.Closer, err error) {
 		socket, err := newSocket(address)
 		if err != nil {
@@ -43,7 +44,7 @@ func WithStart(binary, address, daemonAddress, cgroup string, debug bool, exitHa
 		}
 		defer f.Close()
 
-		cmd := newCommand(binary, daemonAddress, debug, config, f)
+		cmd := newCommand(binary, daemonAddress, nonewns, debug, config, f)
 		ec, err := reaper.Default.Start(cmd)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "failed to start shim")
@@ -83,7 +84,7 @@ func WithStart(binary, address, daemonAddress, cgroup string, debug bool, exitHa
 	}
 }
 
-func newCommand(binary, daemonAddress string, debug bool, config Config, socket *os.File) *exec.Cmd {
+func newCommand(binary, daemonAddress string, nonewns, debug bool, config Config, socket *os.File) *exec.Cmd {
 	args := []string{
 		"--namespace", config.Namespace,
 		"--workdir", config.WorkDir,
@@ -108,7 +109,7 @@ func newCommand(binary, daemonAddress string, debug bool, config Config, socket 
 	// make sure the shim can be re-parented to system init
 	// and is cloned in a new mount namespace because the overlay/filesystems
 	// will be mounted by the shim
-	cmd.SysProcAttr = &atter
+	cmd.SysProcAttr = getSysProcAttr(nonewns)
 	cmd.ExtraFiles = append(cmd.ExtraFiles, socket)
 	if debug {
 		cmd.Stdout = os.Stdout
@@ -180,6 +181,7 @@ func WithLocal(publisher events.Publisher) func(context.Context, Config) (shim.S
 	}
 }
 
+// Config contains shim specific configuration
 type Config struct {
 	Path          string
 	Namespace     string
@@ -202,6 +204,7 @@ func New(ctx context.Context, config Config, opt ClientOpt) (*Client, error) {
 	}, nil
 }
 
+// Client is a shim client containing the connection to a shim
 type Client struct {
 	shim.ShimClient
 
@@ -233,6 +236,7 @@ func (c *Client) KillShim(ctx context.Context) error {
 	return c.signalShim(ctx, unix.SIGKILL)
 }
 
+// Close the cient connection
 func (c *Client) Close() error {
 	if c.c == nil {
 		return nil

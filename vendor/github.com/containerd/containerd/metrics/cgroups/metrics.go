@@ -8,28 +8,30 @@ import (
 	"sync"
 
 	"github.com/containerd/cgroups"
+	"github.com/containerd/containerd/log"
 	metrics "github.com/docker/go-metrics"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 )
 
 var (
+	// ErrAlreadyCollected is returned when a cgroups is already being monitored
 	ErrAlreadyCollected = errors.New("cgroup is already being collected")
-	ErrCgroupNotExists  = errors.New("cgroup does not exist in the collector")
+	// ErrCgroupNotExists is returns when a cgroup no longer exists
+	ErrCgroupNotExists = errors.New("cgroup does not exist in the collector")
 )
 
 // Trigger will be called when an event happens and provides the cgroup
 // where the event originated from
 type Trigger func(string, string, cgroups.Cgroup)
 
-// New registers the Collector with the provided namespace and returns it so
+// newCollector registers the collector with the provided namespace and returns it so
 // that cgroups can be added for collection
-func NewCollector(ns *metrics.Namespace) *Collector {
+func newCollector(ns *metrics.Namespace) *collector {
 	if ns == nil {
-		return &Collector{}
+		return &collector{}
 	}
 	// add machine cpus and memory info
-	c := &Collector{
+	c := &collector{
 		ns:      ns,
 		cgroups: make(map[string]*task),
 	}
@@ -38,6 +40,7 @@ func NewCollector(ns *metrics.Namespace) *Collector {
 	c.metrics = append(c.metrics, memoryMetrics...)
 	c.metrics = append(c.metrics, hugetlbMetrics...)
 	c.metrics = append(c.metrics, blkioMetrics...)
+	c.storedMetrics = make(chan prometheus.Metric, 100*len(c.metrics))
 	ns.Add(c)
 	return c
 }
@@ -52,47 +55,61 @@ func taskID(id, namespace string) string {
 	return fmt.Sprintf("%s-%s", id, namespace)
 }
 
-// Collector provides the ability to collect container stats and export
+// collector provides the ability to collect container stats and export
 // them in the prometheus format
-type Collector struct {
+type collector struct {
 	mu sync.RWMutex
 
-	cgroups map[string]*task
-	ns      *metrics.Namespace
-	metrics []*metric
+	cgroups       map[string]*task
+	ns            *metrics.Namespace
+	metrics       []*metric
+	storedMetrics chan prometheus.Metric
 }
 
-func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
+func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	for _, m := range c.metrics {
 		ch <- m.desc(c.ns)
 	}
 }
 
-func (c *Collector) Collect(ch chan<- prometheus.Metric) {
+func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	c.mu.RLock()
 	wg := &sync.WaitGroup{}
 	for _, t := range c.cgroups {
 		wg.Add(1)
-		go c.collect(t.id, t.namespace, t.cgroup, ch, wg)
+		go c.collect(t.id, t.namespace, t.cgroup, ch, true, wg)
+	}
+storedLoop:
+	for {
+		// read stored metrics until the channel is flushed
+		select {
+		case m := <-c.storedMetrics:
+			ch <- m
+		default:
+			break storedLoop
+		}
 	}
 	c.mu.RUnlock()
 	wg.Wait()
 }
 
-func (c *Collector) collect(id, namespace string, cg cgroups.Cgroup, ch chan<- prometheus.Metric, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (c *collector) collect(id, namespace string, cg cgroups.Cgroup, ch chan<- prometheus.Metric, block bool, wg *sync.WaitGroup) {
+	if wg != nil {
+		defer wg.Done()
+	}
+
 	stats, err := cg.Stat(cgroups.IgnoreNotExist)
 	if err != nil {
-		logrus.WithError(err).Errorf("stat cgroup %s", id)
+		log.L.WithError(err).Errorf("stat cgroup %s", id)
 		return
 	}
 	for _, m := range c.metrics {
-		m.collect(id, namespace, stats, c.ns, ch)
+		m.collect(id, namespace, stats, c.ns, ch, block)
 	}
 }
 
 // Add adds the provided cgroup and id so that metrics are collected and exported
-func (c *Collector) Add(id, namespace string, cg cgroups.Cgroup) error {
+func (c *collector) Add(id, namespace string, cg cgroups.Cgroup) error {
 	if c.ns == nil {
 		return nil
 	}
@@ -110,7 +127,7 @@ func (c *Collector) Add(id, namespace string, cg cgroups.Cgroup) error {
 }
 
 // Remove removes the provided cgroup by id from the collector
-func (c *Collector) Remove(id, namespace string) {
+func (c *collector) Remove(id, namespace string) {
 	if c.ns == nil {
 		return
 	}
