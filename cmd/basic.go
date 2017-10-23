@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/kunalkushwaha/ctr-powertest/testcase"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -27,7 +25,7 @@ func runBasicTest(cmd *cobra.Command, args []string) {
 
 	singleClientTestCases := &testcase.BasicContainerTest{Runtime: ctrRuntime}
 
-	err := singleClientTestCases.RunTestCases(context.TODO(), nil, args)
+	err := singleClientTestCases.RunTestCases(ctx, nil, args)
 	if err != nil {
 		log.Fatal(err)
 	}

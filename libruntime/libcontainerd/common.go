@@ -1,7 +1,10 @@
 package libcontainerd
 
 import (
+	"context"
+
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/server"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
 )
@@ -13,16 +16,21 @@ type ContainerdRuntime struct {
 }
 
 //GetNewContainerdRuntime creates new instance of containerd test setup
-func GetNewContainerdRuntime(config libruntime.RuntimeConfig, startServer bool) (libruntime.Runtime, error) {
+func GetNewContainerdRuntime(ctx context.Context, config libruntime.RuntimeConfig, startServer bool) (libruntime.Runtime, error) {
+	ns, err := namespaces.NamespaceRequired(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var (
 		serverInstance *server.Server
 		client         *containerd.Client
-		err            error
 	)
+
 	//TODO: build containerd-config and have opten to start server too
 	//localConfig := runtime2containerd(config)
 
-	client, err = GetNewClient(config.RuntimeEndpoint, "powertest")
+	client, err = GetNewClient(config.RuntimeEndpoint, ns)
 	if err != nil {
 		return nil, err
 	}

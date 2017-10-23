@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
 	"github.com/spf13/cobra"
 
-	_ "github.com/containerd/containerd/differ"
+	_ "github.com/containerd/containerd/diff/walking"
 	_ "github.com/containerd/containerd/linux"
 	_ "github.com/containerd/containerd/metrics/cgroups"
 	_ "github.com/containerd/containerd/services/containers"
@@ -25,6 +26,7 @@ import (
 
 var cfgFile string
 var ctrRuntime libruntime.Runtime
+var ctx context.Context
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{

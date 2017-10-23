@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
 	runtimespecs "github.com/opencontainers/runtime-spec/specs-go"
 	log "github.com/sirupsen/logrus"
@@ -57,7 +58,10 @@ func (cr *ContainerdRuntime) Run(ctx context.Context, containerName, imageName s
 		return nil, nil, err
 	}
 	if specs == nil {
-		specs, err = containerd.GenerateSpec(ctx, cr.cclient, nil, containerd.WithImageConfig(image), containerd.WithProcessArgs("true"))
+		c := &containers.Container{
+			ID: containerName,
+		}
+		specs, err = containerd.GenerateSpec(ctx, cr.cclient, c, containerd.WithImageConfig(image), containerd.WithProcessArgs("true"))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -213,7 +217,10 @@ func (cr *ContainerdRuntime) Create(ctx context.Context, containerName, imageNam
 		return nil, err
 	}
 	if specs == nil {
-		specs, err = containerd.GenerateSpec(ctx, cr.cclient, nil, containerd.WithImageConfig(image), containerd.WithProcessArgs("true"))
+		c := &containers.Container{
+			ID: containerName,
+		}
+		specs, err = containerd.GenerateSpec(ctx, cr.cclient, c, containerd.WithImageConfig(image), containerd.WithProcessArgs("true"))
 		if err != nil {
 			return nil, err
 		}
@@ -264,7 +271,10 @@ func (c ContainerdRuntime) Exec(ctx context.Context, ctr libruntime.Container, c
 	}
 
 	//Extract Process spec from Specs
-	specs, _ := container.Spec()
+	specs, err := container.Spec(ctx)
+	if err != nil {
+		return err
+	}
 	processSpec := specs.Process
 	// Prepare process
 	execID := "powertest-" + fmt.Sprintf("%X", rand.Int())

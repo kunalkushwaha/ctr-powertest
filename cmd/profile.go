@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"log"
 
 	"github.com/kunalkushwaha/ctr-powertest/testcase"
@@ -18,7 +17,7 @@ var profileCmd = &cobra.Command{
 		initTestSuite(cmd)
 
 		profileTestCases := &testcase.ProfileContainerTest{Runtime: ctrRuntime}
-		err := profileTestCases.RunTestCases(context.TODO(), nil, args)
+		err := profileTestCases.RunTestCases(ctx, nil, args)
 		if err != nil {
 			log.Fatal(err)
 		}
