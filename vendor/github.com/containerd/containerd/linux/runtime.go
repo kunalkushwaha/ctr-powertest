@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/metadata"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/reaper"
 	"github.com/containerd/containerd/runtime"
@@ -30,9 +31,9 @@ import (
 	runc "github.com/containerd/go-runc"
 	"github.com/containerd/typeurl"
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
 	"golang.org/x/sys/unix"
 )
 
@@ -49,10 +50,10 @@ const (
 
 func init() {
 	plugin.Register(&plugin.Registration{
-		Type: plugin.RuntimePlugin,
-		ID:   "linux",
-		Init: New,
-		Requires: []plugin.PluginType{
+		Type:   plugin.RuntimePlugin,
+		ID:     "linux",
+		InitFn: New,
+		Requires: []plugin.Type{
 			plugin.TaskMonitorPlugin,
 			plugin.MetadataPlugin,
 		},
@@ -65,6 +66,7 @@ func init() {
 
 var _ = (runtime.Runtime)(&Runtime{})
 
+// Config options for the runtime
 type Config struct {
 	// Shim is a path or name of binary implementing the Shim GRPC API
 	Shim string `toml:"shim"`
@@ -76,9 +78,23 @@ type Config struct {
 	NoShim bool `toml:"no_shim"`
 	// Debug enable debug on the shim
 	ShimDebug bool `toml:"shim_debug"`
+	// ShimNoMountNS prevents the runtime from putting shims into their own mount namespace.
+	//
+	// Putting the shim in its own mount namespace ensure that any mounts made
+	// by it in order to get the task rootfs ready will be undone regardless
+	// on how the shim dies.
+	//
+	// NOTE: This should only be used in kernel older than 3.18 to avoid shims
+	// from causing a DoS in their parent namespace due to having a copy of
+	// mounts previously there which would prevent unlink, rename and remove
+	// operations on those mountpoints.
+	ShimNoMountNS bool `toml:"shim_no_newns"`
 }
 
+// New returns a configured runtime
 func New(ic *plugin.InitContext) (interface{}, error) {
+	ic.Meta.Platforms = []ocispec.Platform{platforms.DefaultSpec()}
+
 	if err := os.MkdirAll(ic.Root, 0711); err != nil {
 		return nil, err
 	}
@@ -99,7 +115,7 @@ func New(ic *plugin.InitContext) (interface{}, error) {
 		state:   ic.State,
 		monitor: monitor.(runtime.TaskMonitor),
 		tasks:   runtime.NewTaskList(),
-		db:      m.(*bolt.DB),
+		db:      m.(*metadata.DB),
 		address: ic.Address,
 		events:  ic.Events,
 		config:  cfg,
@@ -108,6 +124,7 @@ func New(ic *plugin.InitContext) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// TODO: need to add the tasks to the monitor
 	for _, t := range tasks {
 		if err := r.tasks.AddWithNamespace(t.namespace, t); err != nil {
@@ -117,6 +134,7 @@ func New(ic *plugin.InitContext) (interface{}, error) {
 	return r, nil
 }
 
+// Runtime for a linux based system
 type Runtime struct {
 	root    string
 	state   string
@@ -124,16 +142,18 @@ type Runtime struct {
 
 	monitor runtime.TaskMonitor
 	tasks   *runtime.TaskList
-	db      *bolt.DB
+	db      *metadata.DB
 	events  *events.Exchange
 
 	config *Config
 }
 
+// ID of the runtime
 func (r *Runtime) ID() string {
 	return pluginID
 }
 
+// Create a new task
 func (r *Runtime) Create(ctx context.Context, id string, opts runtime.CreateOpts) (_ runtime.Task, err error) {
 	namespace, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
@@ -175,7 +195,8 @@ func (r *Runtime) Create(ctx context.Context, id string, opts runtime.CreateOpts
 			}
 			cgroup = v.(*runcopts.CreateOptions).ShimCgroup
 		}
-		shimopt = ShimRemote(r.config.Shim, r.address, cgroup, r.config.ShimDebug, func() {
+		exitHandler := func() {
+			log.G(ctx).WithField("id", id).Info("shim reaped")
 			t, err := r.tasks.Get(ctx, id)
 			if err != nil {
 				// Task was never started or was already sucessfully deleted
@@ -204,7 +225,9 @@ func (r *Runtime) Create(ctx context.Context, id string, opts runtime.CreateOpts
 					"namespace": namespace,
 				}).Warn("failed to clen up after killed shim")
 			}
-		})
+		}
+		shimopt = ShimRemote(r.config.Shim, r.address, cgroup,
+			r.config.ShimNoMountNS, r.config.ShimDebug, exitHandler)
 	}
 
 	s, err := bundle.NewShimClient(ctx, namespace, shimopt, ropts)
@@ -265,6 +288,7 @@ func (r *Runtime) Create(ctx context.Context, id string, opts runtime.CreateOpts
 	return t, nil
 }
 
+// Delete a task removing all on disk state
 func (r *Runtime) Delete(ctx context.Context, c runtime.Task) (*runtime.Exit, error) {
 	namespace, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
@@ -305,6 +329,7 @@ func (r *Runtime) Delete(ctx context.Context, c runtime.Task) (*runtime.Exit, er
 	}, nil
 }
 
+// Tasks returns all tasks known to the runtime
 func (r *Runtime) Tasks(ctx context.Context) ([]runtime.Task, error) {
 	return r.tasks.GetAll(ctx)
 }
@@ -330,6 +355,7 @@ func (r *Runtime) restoreTasks(ctx context.Context) ([]*Task, error) {
 	return o, nil
 }
 
+// Get a specific task by task id
 func (r *Runtime) Get(ctx context.Context, id string) (runtime.Task, error) {
 	return r.tasks.Get(ctx, id)
 }
@@ -491,6 +517,5 @@ func (r *Runtime) getRuncOptions(ctx context.Context, id string) (*runcopts.Runc
 
 		return ropts, nil
 	}
-
 	return nil, nil
 }

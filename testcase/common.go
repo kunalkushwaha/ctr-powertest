@@ -23,7 +23,7 @@ type Testcases interface {
 }
 
 //SetupTestEnvironment setups server and client for container runtime
-func SetupTestEnvironment(proto string, config libruntime.RuntimeConfig, clean bool) (libruntime.Runtime, error) {
+func SetupTestEnvironment(ctx context.Context, proto string, config libruntime.RuntimeConfig, clean bool) (libruntime.Runtime, error) {
 
 	//TODO:
 	// if clean {
@@ -31,7 +31,7 @@ func SetupTestEnvironment(proto string, config libruntime.RuntimeConfig, clean b
 	//}
 
 	// Get the runtime.
-	ctrRuntime, err := getRuntime(proto, config)
+	ctrRuntime, err := getRuntime(ctx, proto, config)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -39,11 +39,11 @@ func SetupTestEnvironment(proto string, config libruntime.RuntimeConfig, clean b
 	return ctrRuntime, nil
 }
 
-func getRuntime(proto string, config libruntime.RuntimeConfig) (libruntime.Runtime, error) {
+func getRuntime(ctx context.Context, proto string, config libruntime.RuntimeConfig) (libruntime.Runtime, error) {
 	//Get available runtime.
 	switch proto {
 	case "containerd":
-		return libcontainerd.GetNewContainerdRuntime(config, config.RunDefaultServer)
+		return libcontainerd.GetNewContainerdRuntime(ctx, config, config.RunDefaultServer)
 	case "cri":
 		return libcri.GetNewCRIRuntime(config, false)
 

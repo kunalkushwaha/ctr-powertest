@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"expvar"
 	"net"
 	"net/http"
@@ -12,20 +11,25 @@ import (
 
 	"github.com/boltdb/bolt"
 	containers "github.com/containerd/containerd/api/services/containers/v1"
-	content "github.com/containerd/containerd/api/services/content/v1"
+	contentapi "github.com/containerd/containerd/api/services/content/v1"
 	diff "github.com/containerd/containerd/api/services/diff/v1"
 	eventsapi "github.com/containerd/containerd/api/services/events/v1"
 	images "github.com/containerd/containerd/api/services/images/v1"
+	introspection "github.com/containerd/containerd/api/services/introspection/v1"
 	namespaces "github.com/containerd/containerd/api/services/namespaces/v1"
-	snapshot "github.com/containerd/containerd/api/services/snapshot/v1"
+	snapshotapi "github.com/containerd/containerd/api/services/snapshot/v1"
 	tasks "github.com/containerd/containerd/api/services/tasks/v1"
 	version "github.com/containerd/containerd/api/services/version/v1"
+	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/metadata"
 	"github.com/containerd/containerd/plugin"
+	"github.com/containerd/containerd/snapshot"
 	metrics "github.com/docker/go-metrics"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
@@ -63,7 +67,7 @@ func New(ctx context.Context, config *Config) (*Server, error) {
 			rpc:    rpc,
 			events: events.NewExchange(),
 		}
-		initialized = make(map[plugin.PluginType]map[string]interface{})
+		initialized = plugin.NewPluginSet()
 	)
 	for _, p := range plugins {
 		id := p.URI()
@@ -71,10 +75,10 @@ func New(ctx context.Context, config *Config) (*Server, error) {
 
 		initContext := plugin.NewContext(
 			ctx,
+			p,
 			initialized,
 			config.Root,
 			config.State,
-			id,
 		)
 		initContext.Events = s.events
 		initContext.Address = config.GRPC.Address
@@ -87,7 +91,12 @@ func New(ctx context.Context, config *Config) (*Server, error) {
 			}
 			initContext.Config = pluginConfig
 		}
-		instance, err := p.Init(initContext)
+		result := p.Init(initContext)
+		if err := initialized.Add(result); err != nil {
+			return nil, errors.Wrapf(err, "could not add plugin result to plugin set")
+		}
+
+		instance, err := result.Instance()
 		if err != nil {
 			if plugin.IsSkipPlugin(err) {
 				log.G(ctx).WithField("type", p.Type).Infof("skip loading plugin %q...", id)
@@ -95,14 +104,6 @@ func New(ctx context.Context, config *Config) (*Server, error) {
 				log.G(ctx).WithError(err).Warnf("failed to load plugin %s", id)
 			}
 			continue
-		}
-
-		if types, ok := initialized[p.Type]; ok {
-			types[p.ID] = instance
-		} else {
-			initialized[p.Type] = map[string]interface{}{
-				p.ID: instance,
-			}
 		}
 		// check for grpc services that should be registered with the server
 		if service, ok := instance.(plugin.Service); ok {
@@ -168,18 +169,55 @@ func loadPlugins(config *Config) ([]*plugin.Registration, error) {
 	plugin.Register(&plugin.Registration{
 		Type: plugin.ContentPlugin,
 		ID:   "content",
-		Init: func(ic *plugin.InitContext) (interface{}, error) {
+		InitFn: func(ic *plugin.InitContext) (interface{}, error) {
+			ic.Meta.Exports["root"] = ic.Root
 			return local.NewStore(ic.Root)
 		},
 	})
 	plugin.Register(&plugin.Registration{
 		Type: plugin.MetadataPlugin,
 		ID:   "bolt",
-		Init: func(ic *plugin.InitContext) (interface{}, error) {
+		Requires: []plugin.Type{
+			plugin.ContentPlugin,
+			plugin.SnapshotPlugin,
+		},
+		InitFn: func(ic *plugin.InitContext) (interface{}, error) {
 			if err := os.MkdirAll(ic.Root, 0711); err != nil {
 				return nil, err
 			}
-			return bolt.Open(filepath.Join(ic.Root, "meta.db"), 0644, nil)
+			cs, err := ic.Get(plugin.ContentPlugin)
+			if err != nil {
+				return nil, err
+			}
+
+			snapshottersRaw, err := ic.GetByType(plugin.SnapshotPlugin)
+			if err != nil {
+				return nil, err
+			}
+
+			snapshotters := make(map[string]snapshot.Snapshotter)
+			for name, sn := range snapshottersRaw {
+				sn, err := sn.Instance()
+				if err != nil {
+					log.G(ic.Context).WithError(err).
+						Warnf("could not use snapshotter %v in metadata plugin", name)
+					continue
+				}
+				snapshotters[name] = sn.(snapshot.Snapshotter)
+			}
+
+			path := filepath.Join(ic.Root, "meta.db")
+			ic.Meta.Exports["path"] = path
+
+			db, err := bolt.Open(path, 0644, nil)
+			if err != nil {
+				return nil, err
+			}
+			mdb := metadata.NewDB(db, cs.(content.Store), snapshotters)
+			if err := mdb.Init(ic.Context); err != nil {
+				return nil, err
+			}
+			return mdb, nil
 		},
 	})
 
@@ -199,7 +237,7 @@ func interceptor(
 		ctx = log.WithModule(ctx, "tasks")
 	case containers.ContainersServer:
 		ctx = log.WithModule(ctx, "containers")
-	case content.ContentServer:
+	case contentapi.ContentServer:
 		ctx = log.WithModule(ctx, "content")
 	case images.ImagesServer:
 		ctx = log.WithModule(ctx, "images")
@@ -207,7 +245,7 @@ func interceptor(
 		// No need to change the context
 	case version.VersionServer:
 		ctx = log.WithModule(ctx, "version")
-	case snapshot.SnapshotsServer:
+	case snapshotapi.SnapshotsServer:
 		ctx = log.WithModule(ctx, "snapshot")
 	case diff.DiffServer:
 		ctx = log.WithModule(ctx, "diff")
@@ -215,6 +253,8 @@ func interceptor(
 		ctx = log.WithModule(ctx, "namespaces")
 	case eventsapi.EventsServer:
 		ctx = log.WithModule(ctx, "events")
+	case introspection.IntrospectionServer:
+		ctx = log.WithModule(ctx, "introspection")
 	default:
 		log.G(ctx).Warnf("unknown GRPC server type: %#v\n", info.Server)
 	}

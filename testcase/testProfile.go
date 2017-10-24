@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,7 +31,7 @@ func (t *ProfileContainerTest) TestPullContainerImage(ctx context.Context, image
 	// Pull image from remote repo.
 	_, err := t.Runtime.Pull(ctx, imageName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to pull")
 	}
 	return nil
 }
@@ -40,31 +41,31 @@ func (t *ProfileContainerTest) TestCreateRunningContainers(ctx context.Context, 
 	createStartTime := time.Now()
 	ctr, err := t.Runtime.Create(ctx, containerName, imageName, nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create")
 	}
 	createTotalTime := time.Now().Sub(createStartTime)
 
 	err = t.Runtime.Runnable(ctx, ctr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to check runnable")
 	}
 
 	statusC, err := t.Runtime.Wait(ctx, ctr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get wait")
 	}
 
 	startStartTime := time.Now()
 	err = t.Runtime.Start(ctx, ctr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to start container")
 	}
 	startTotalTime := time.Now().Sub(startStartTime)
 
 	stopStartTime := time.Now()
 	err = t.Runtime.Stop(ctx, ctr)
 	if err != nil {
-		return fmt.Errorf("Container Stop: %v", err)
+		return errors.Wrap(err, "failed to stop container")
 	}
 	stopTotalTime := time.Now().Sub(stopStartTime)
 
@@ -73,7 +74,7 @@ func (t *ProfileContainerTest) TestCreateRunningContainers(ctx context.Context, 
 	deleteStartTime := time.Now()
 	err = t.Runtime.Delete(ctx, ctr)
 	if err != nil {
-		return fmt.Errorf("Container Delete: %v", err)
+		return errors.Wrap(err, "failed to delete container")
 	}
 	deleteTotalTime := time.Now().Sub(deleteStartTime)
 

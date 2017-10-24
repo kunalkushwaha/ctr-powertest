@@ -3,7 +3,6 @@ package cmd
 import (
 	"github.com/kunalkushwaha/ctr-powertest/testcase"
 
-	"context"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -28,7 +27,7 @@ func runStressTest(cmd *cobra.Command, args []string) {
 
 	testcases, _ := cmd.Flags().GetStringSlice("testcase")
 	stressTestCases := &testcase.StressTest{Runtime: ctrRuntime}
-	err := stressTestCases.RunTestCases(context.TODO(), testcases, args)
+	err := stressTestCases.RunTestCases(ctx, testcases, args)
 	if err != nil {
 		log.Fatal(err)
 	}

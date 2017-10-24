@@ -10,6 +10,7 @@ import (
 	"github.com/containerd/containerd/metadata"
 	"github.com/containerd/containerd/plugin"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -20,34 +21,35 @@ func init() {
 	plugin.Register(&plugin.Registration{
 		Type: plugin.GRPCPlugin,
 		ID:   "containers",
-		Requires: []plugin.PluginType{
+		Requires: []plugin.Type{
 			plugin.MetadataPlugin,
 		},
-		Init: func(ic *plugin.InitContext) (interface{}, error) {
+		InitFn: func(ic *plugin.InitContext) (interface{}, error) {
 			m, err := ic.Get(plugin.MetadataPlugin)
 			if err != nil {
 				return nil, err
 			}
-			return NewService(m.(*bolt.DB), ic.Events), nil
+			return NewService(m.(*metadata.DB), ic.Events), nil
 		},
 	})
 }
 
-type Service struct {
-	db        *bolt.DB
+type service struct {
+	db        *metadata.DB
 	publisher events.Publisher
 }
 
-func NewService(db *bolt.DB, publisher events.Publisher) api.ContainersServer {
-	return &Service{db: db, publisher: publisher}
+// NewService returns the container GRPC server
+func NewService(db *metadata.DB, publisher events.Publisher) api.ContainersServer {
+	return &service{db: db, publisher: publisher}
 }
 
-func (s *Service) Register(server *grpc.Server) error {
+func (s *service) Register(server *grpc.Server) error {
 	api.RegisterContainersServer(server, s)
 	return nil
 }
 
-func (s *Service) Get(ctx context.Context, req *api.GetContainerRequest) (*api.GetContainerResponse, error) {
+func (s *service) Get(ctx context.Context, req *api.GetContainerRequest) (*api.GetContainerResponse, error) {
 	var resp api.GetContainerResponse
 
 	return &resp, errdefs.ToGRPC(s.withStoreView(ctx, func(ctx context.Context, store containers.Store) error {
@@ -62,7 +64,7 @@ func (s *Service) Get(ctx context.Context, req *api.GetContainerRequest) (*api.G
 	}))
 }
 
-func (s *Service) List(ctx context.Context, req *api.ListContainersRequest) (*api.ListContainersResponse, error) {
+func (s *service) List(ctx context.Context, req *api.ListContainersRequest) (*api.ListContainersResponse, error) {
 	var resp api.ListContainersResponse
 
 	return &resp, errdefs.ToGRPC(s.withStoreView(ctx, func(ctx context.Context, store containers.Store) error {
@@ -76,7 +78,7 @@ func (s *Service) List(ctx context.Context, req *api.ListContainersRequest) (*ap
 	}))
 }
 
-func (s *Service) Create(ctx context.Context, req *api.CreateContainerRequest) (*api.CreateContainerResponse, error) {
+func (s *service) Create(ctx context.Context, req *api.CreateContainerRequest) (*api.CreateContainerResponse, error) {
 	var resp api.CreateContainerResponse
 
 	if err := s.withStoreUpdate(ctx, func(ctx context.Context, store containers.Store) error {
@@ -107,7 +109,7 @@ func (s *Service) Create(ctx context.Context, req *api.CreateContainerRequest) (
 	return &resp, nil
 }
 
-func (s *Service) Update(ctx context.Context, req *api.UpdateContainerRequest) (*api.UpdateContainerResponse, error) {
+func (s *service) Update(ctx context.Context, req *api.UpdateContainerRequest) (*api.UpdateContainerResponse, error) {
 	if req.Container.ID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Container.ID required")
 	}
@@ -147,7 +149,7 @@ func (s *Service) Update(ctx context.Context, req *api.UpdateContainerRequest) (
 	return &resp, nil
 }
 
-func (s *Service) Delete(ctx context.Context, req *api.DeleteContainerRequest) (*empty.Empty, error) {
+func (s *service) Delete(ctx context.Context, req *api.DeleteContainerRequest) (*empty.Empty, error) {
 	if err := s.withStoreUpdate(ctx, func(ctx context.Context, store containers.Store) error {
 		return store.Delete(ctx, req.ID)
 	}); err != nil {
@@ -160,17 +162,21 @@ func (s *Service) Delete(ctx context.Context, req *api.DeleteContainerRequest) (
 		return &empty.Empty{}, err
 	}
 
+	if err := s.db.GarbageCollect(ctx); err != nil {
+		return &empty.Empty{}, errdefs.ToGRPC(errors.Wrap(err, "garbage collection failed"))
+	}
+
 	return &empty.Empty{}, nil
 }
 
-func (s *Service) withStore(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) func(tx *bolt.Tx) error {
+func (s *service) withStore(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) func(tx *bolt.Tx) error {
 	return func(tx *bolt.Tx) error { return fn(ctx, metadata.NewContainerStore(tx)) }
 }
 
-func (s *Service) withStoreView(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) error {
+func (s *service) withStoreView(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) error {
 	return s.db.View(s.withStore(ctx, fn))
 }
 
-func (s *Service) withStoreUpdate(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) error {
+func (s *service) withStoreUpdate(ctx context.Context, fn func(ctx context.Context, store containers.Store) error) error {
 	return s.db.Update(s.withStore(ctx, fn))
 }

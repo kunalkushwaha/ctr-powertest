@@ -27,7 +27,7 @@ func SetupNewServer(config server.Config) (*server.Server, error) {
 	}
 
 	if config.Debug.Address != "" {
-		l, err := sys.GetLocalListener(config.Debug.Address, config.Debug.Uid, config.Debug.Gid)
+		l, err := sys.GetLocalListener(config.Debug.Address, config.Debug.UID, config.Debug.GID)
 		if err != nil {
 			return serverInstance, errors.Wrapf(err, "failed to get listener for debug endpoint")
 		}
@@ -42,7 +42,7 @@ func SetupNewServer(config server.Config) (*server.Server, error) {
 	}
 
 	if config.GRPC.Address != "" {
-		l, err := sys.GetLocalListener(config.GRPC.Address, config.GRPC.Uid, config.GRPC.Gid)
+		l, err := sys.GetLocalListener(config.GRPC.Address, config.GRPC.UID, config.GRPC.GID)
 		if err != nil {
 			return serverInstance, errors.Wrapf(err, "failed to get listener for main endpoint")
 		}

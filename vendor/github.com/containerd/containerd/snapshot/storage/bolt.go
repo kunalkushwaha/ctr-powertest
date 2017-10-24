@@ -305,7 +305,7 @@ func Remove(ctx context.Context, key string) (string, snapshot.Kind, error) {
 		if pbkt != nil {
 			k, _ := pbkt.Cursor().Seek(parentPrefixKey(id))
 			if getParentPrefix(k) == id {
-				return errors.Errorf("cannot remove snapshot with child")
+				return errors.Wrap(errdefs.ErrFailedPrecondition, "cannot remove snapshot with child")
 			}
 
 			if si.Parent != "" {
@@ -582,7 +582,7 @@ func encodeSize(size int64) ([]byte, error) {
 func encodeID(id uint64) ([]byte, error) {
 	var (
 		buf       [binary.MaxVarintLen64]byte
-		idEncoded []byte = buf[:]
+		idEncoded = buf[:]
 	)
 	idEncoded = idEncoded[:binary.PutUvarint(idEncoded, id)]
 

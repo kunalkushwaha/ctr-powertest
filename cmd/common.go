@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"context"
+
+	"github.com/containerd/containerd/namespaces"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
 	"github.com/kunalkushwaha/ctr-powertest/testcase"
 	log "github.com/sirupsen/logrus"
@@ -41,9 +44,11 @@ func initTestSuite(cmd *cobra.Command) {
 
 	proto, _ := cmd.Flags().GetString("proto")
 	runtime, _ := cmd.Flags().GetString("runtime")
+	ctx = context.Background()
 	switch proto {
 	case "containerd":
-		ctrRuntime, err = testcase.SetupTestEnvironment(proto, stdContainerdConfig, false)
+		ctx = namespaces.WithNamespace(ctx, "powertest")
+		ctrRuntime, err = testcase.SetupTestEnvironment(ctx, proto, stdContainerdConfig, false)
 		if err != nil {
 			log.Fatal("Error while setting up environment : ", err)
 		}
@@ -54,7 +59,7 @@ func initTestSuite(cmd *cobra.Command) {
 		} else {
 			config = stdCRIContainerdConfig
 		}
-		ctrRuntime, err = testcase.SetupTestEnvironment(proto, config, false)
+		ctrRuntime, err = testcase.SetupTestEnvironment(ctx, proto, config, false)
 		if err != nil {
 			log.Fatal("Error while setting up environment : ", err)
 		}

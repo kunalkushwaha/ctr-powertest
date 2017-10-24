@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
-type Service struct {
+type service struct {
 	serve *health.Server
 }
 
@@ -16,17 +16,19 @@ func init() {
 	plugin.Register(&plugin.Registration{
 		Type: plugin.GRPCPlugin,
 		ID:   "healthcheck",
-		Init: NewService,
+		InitFn: func(*plugin.InitContext) (interface{}, error) {
+			return newService()
+		},
 	})
 }
 
-func NewService(ic *plugin.InitContext) (interface{}, error) {
-	return &Service{
+func newService() (*service, error) {
+	return &service{
 		health.NewServer(),
 	}, nil
 }
 
-func (s *Service) Register(server *grpc.Server) error {
+func (s *service) Register(server *grpc.Server) error {
 	grpc_health_v1.RegisterHealthServer(server, s.serve)
 	return nil
 }
