@@ -139,7 +139,7 @@ func (cr *CRIRuntime) Stop(ctx context.Context, ctr *libruntime.Container) error
 	return err
 }
 
-func (cr *CRIORuntime) Delete(ctx context.Context, ctr *libruntime.Container) error {
+func (cr *CRIRuntime) Delete(ctx context.Context, ctr *libruntime.Container) error {
 	if ctr.ID == "" {
 		return fmt.Errorf("Container ID cannot be empty")
 	}
