@@ -104,7 +104,7 @@ func (cr *ContainerdRuntime) Delete(ctx context.Context, ctr *libruntime.Contain
 		return err
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Delete time %s ", totalTime.String())
+	log.Debugf("Container Delete time %s ", totalTime.String())
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (cr *ContainerdRuntime) Start(ctx context.Context, ctr *libruntime.Containe
 		}
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Start time %s ", totalTime.String())
+	log.Debugf("Container Start time %s ", totalTime.String())
 	return err
 }
 
@@ -212,7 +212,7 @@ func (cr *ContainerdRuntime) Stop(ctx context.Context, ctr *libruntime.Container
 		return fmt.Errorf("Undefined Task state %v ", status)
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Stop time %s ", totalTime.String())
+	log.Debugf("Container Stop time %s ", totalTime.String())
 	return nil
 }
 
@@ -239,7 +239,7 @@ func (cr *ContainerdRuntime) Create(ctx context.Context, containerName, imageNam
 		return nil, fmt.Errorf("Error in Container Creation : %v", err)
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Create time %s ", totalTime.String())
+	log.Debugf("Container Create time %s ", totalTime.String())
 	return &libruntime.Container{ID: containerName}, nil
 }
 
