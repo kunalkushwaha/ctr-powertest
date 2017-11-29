@@ -102,7 +102,7 @@ func (cr *CRIRuntime) Create(ctx context.Context, containerName string, imageNam
 		return nil, err
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Create time %s ", totalTime.String())
+	log.Debugf("Container Create time %s ", totalTime.String())
 	log.Debug(r.ContainerId)
 
 	return &libruntime.Container{ID: r.ContainerId, PodID: podID}, nil
@@ -119,7 +119,7 @@ func (cr *CRIRuntime) Run(ctx context.Context, containerName string, imageName s
 		return nil, nil, err
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Start time %s ", totalTime.String())
+	log.Debugf("Container Start time %s ", totalTime.String())
 	return nil, ctr, nil
 }
 func (cr *CRIRuntime) Stop(ctx context.Context, ctr *libruntime.Container) error {
@@ -135,7 +135,7 @@ func (cr *CRIRuntime) Stop(ctx context.Context, ctr *libruntime.Container) error
 		return err
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Stop time %s ", totalTime.String())
+	log.Debugf("Container Stop time %s ", totalTime.String())
 	return err
 }
 
@@ -151,7 +151,7 @@ func (cr *CRIRuntime) Delete(ctx context.Context, ctr *libruntime.Container) err
 		return nil
 	}
 	totalTime := time.Now().Sub(startTime)
-	log.Infof("Container Delete time %s ", totalTime.String())
+	log.Debugf("Container Delete time %s ", totalTime.String())
 
 	err = cr.StopPodSandbox(ctx, ctr.PodID)
 	if err != nil {
