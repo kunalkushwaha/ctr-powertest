@@ -74,16 +74,12 @@ Flags:
 
 #### Performace:
 
-Below is some performace numbers as of ``Oct 23, 2017``
+Below is some performace numbers as of ``Dec 1, 2017``
 
 ![Perfomance](Performance.jpg)
 * _All using same runc version_
 
-```
-runc version 1.0.0-rc4+dev
-commit: f53ad9cec928821a25c2a74eb8bd95558f8cf152
-spec: 1.0.0
-```
+More Details https://gist.github.com/kunalkushwaha/6a7b075dd7b05a5af94cc3794c9f069a
 
 
 #### Important TODO:
