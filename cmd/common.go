@@ -23,7 +23,7 @@ var stdContainerdConfig = libruntime.RuntimeConfig{
 var stdCRIOConfig = libruntime.RuntimeConfig{
 	RuntimeName:      "crio",
 	RunDefaultServer: false,
-	RuntimeEndpoint:  "/var/run/crio.sock",
+	RuntimeEndpoint:  "/var/run/crio/crio.sock",
 }
 
 var stdCRIContainerdConfig = libruntime.RuntimeConfig{
