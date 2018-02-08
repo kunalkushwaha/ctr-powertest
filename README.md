@@ -74,12 +74,20 @@ Flags:
 
 #### Performace:
 
-Below is some performace numbers as of ``Dec 1, 2017``
+##### Running performance test
+
+Performace test can be directly run on system by running following commands
+
+ _it build and run ``crio`` & ``cri-containerd`` in docker container_
+  _(original idea [cri-containerd-flame](https://github.com/cpuguy83/cri-containerd-flame))_
+```
+make crio
+make cri-containerd
+```
+
 
 ![Perfomance](Performance.jpg)
 * _All using same runc version_
-
-More Details https://gist.github.com/kunalkushwaha/6a7b075dd7b05a5af94cc3794c9f069a
 
 
 #### Important TODO:

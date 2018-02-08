@@ -1,0 +1,9 @@
+FROM golang:1.9 as bench
+ARG POWERTEST_REPO=https://github.com/kunalkushwaha/ctr-powertest.git
+ARG POWERTEST_COMMIT=HEAD
+ARG POWERTEST_BRANCH=master
+RUN go get github.com/spf13/cobra
+RUN mkdir -p /go/src/github.com/kunalkushwaha && cd /go/src/github.com/kunalkushwaha && git clone -b $POWERTEST_BRANCH $POWERTEST_REPO && cd ctr-powertest && git checkout $POWERTEST_COMMIT
+WORKDIR /go/src/github.com/kunalkushwaha/ctr-powertest
+RUN go build
+ENTRYPOINT ["./ctr-powertest", "-p","cri", "-r","crio","profile"]
