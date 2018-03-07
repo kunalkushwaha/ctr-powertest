@@ -1,0 +1,13 @@
+language: go
+
+go:
+  - 1.10
+  - tip
+
+sudo: required
+
+services:
+  - docker
+
+script:
+  - make cri-containerd
