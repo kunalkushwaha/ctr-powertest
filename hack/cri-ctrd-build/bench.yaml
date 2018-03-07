@@ -6,7 +6,7 @@ drivers:
    type: CRI
    threads: 5
    iterations: 1
-   clientpath: /var/run/cri-containerd.sock
+   clientpath: /run/containerd/containerd.sock
 commands:
   - run
   - stop

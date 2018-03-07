@@ -1,7 +1,7 @@
 package libcri
 
 import (
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
+	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 )
 
 // CRIOOpts sets spec specific information to a newly generated OCI spec

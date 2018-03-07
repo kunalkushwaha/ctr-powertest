@@ -29,7 +29,7 @@ var stdCRIOConfig = libruntime.RuntimeConfig{
 var stdCRIContainerdConfig = libruntime.RuntimeConfig{
 	RuntimeName:      "cri-containerd",
 	RunDefaultServer: false,
-	RuntimeEndpoint:  "/var/run/cri-containerd.sock",
+	RuntimeEndpoint:  "/run/containerd/containerd.sock",
 }
 
 func initTestSuite(cmd *cobra.Command) {

@@ -10,7 +10,8 @@ import (
 	runtimespecs "github.com/opencontainers/runtime-spec/specs-go"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
+	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
+	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 
 func GetNewRuntimeClient(socket string, timeout time.Duration) (*pb.RuntimeServiceClient, error) {
@@ -27,10 +28,13 @@ func GetNewRuntimeClient(socket string, timeout time.Duration) (*pb.RuntimeServi
 }
 
 func GetNewImageClient(socket string, timeout time.Duration) (*pb.ImageServiceClient, error) {
-	conn, err := grpc.Dial(socket, grpc.WithInsecure(), grpc.WithTimeout(timeout),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
-		}))
+	addr, dialer, err := util.GetAddressAndDialer(socket)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(),
+		grpc.WithTimeout(time.Duration(100*time.Second)),
+		grpc.WithDialer(dialer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect: %v", err)
 	}
