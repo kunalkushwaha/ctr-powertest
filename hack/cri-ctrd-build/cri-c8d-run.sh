@@ -3,11 +3,11 @@
 trap handle_exit EXIT
 
 handle_exit() {
-	pkill cri-containerd
+#	pkill cri-containerd
 	pkill containerd
 }
 
-containerd &
-cri-containerd $@
+containerd $@
+#cri-containerd $@
 
 wait

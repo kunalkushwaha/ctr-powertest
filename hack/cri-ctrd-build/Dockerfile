@@ -1,4 +1,4 @@
-FROM golang:1.9 as bench
+FROM golang:1.10 as bench
 ARG POWERTEST_REPO=https://github.com/kunalkushwaha/ctr-powertest.git
 ARG POWERTEST_COMMIT=HEAD
 ARG POWERTEST_BRANCH=master
@@ -7,9 +7,9 @@ RUN mkdir -p /go/src/github.com/kunalkushwaha && cd /go/src/github.com/kunalkush
 WORKDIR /go/src/github.com/kunalkushwaha/ctr-powertest
 RUN go build
 ENTRYPOINT ["./ctr-powertest","-p", "cri","-r","cri-containerd","profile"]
-#ENTRYPOINT ["./ctr-powertest", "profile"]
 
-FROM golang:1.9 as c8d
+
+FROM golang:1.10 as c8d
 ARG CONTAINERD_REPO=https://github.com/containerd/containerd.git
 ARG CONTAINERD_BRANCH=master
 ARG CONTAINERD_COMMIT=HEAD
@@ -21,18 +21,18 @@ RUN mkdir -p /go/src/github.com/containerd/ \
 	&& git checkout $CONTAINERD_COMMIT \
 	&& make BUILDTAGS=no_btrfs && make install
 
-FROM golang:1.9 as cri
+FROM golang:1.10 as cri
 ARG CNI_VERSION=0.6.0
 RUN go get github.com/opencontainers/runc
 RUN mkdir -p /opt/cni/bin && curl -sSLf https://github.com/containernetworking/plugins/releases/download/v${CNI_VERSION}/cni-plugins-amd64-v${CNI_VERSION}.tgz | tar -zx -C /opt/cni/bin
 RUN apt-get update && apt-get install -y socat iptables
 RUN mkdir -p /go/src/github.com/containerd
-ARG CRI_CONTAINERD_REPO=https://github.com/containerd/cri-containerd.git
-ARG CRI_CONTAINERD_COMMIT=HEAD
-ARG CRI_CONTAINERD_BRANCH=master
-RUN cd /go/src/github.com/containerd && git clone -b $CRI_CONTAINERD_BRANCH $CRI_CONTAINERD_REPO && cd cri-containerd && git checkout $CRI_CONTAINERD_COMMIT
-WORKDIR  /go/src/github.com/containerd/cri-containerd
-RUN make BUILD_TAGS="" && make install
+#ARG CRI_CONTAINERD_REPO=https://github.com/containerd/cri-containerd.git
+#ARG CRI_CONTAINERD_COMMIT=HEAD
+#ARG CRI_CONTAINERD_BRANCH=master
+#RUN cd /go/src/github.com/containerd && git clone -b $CRI_CONTAINERD_BRANCH $CRI_CONTAINERD_REPO && cd cri-containerd && git checkout $CRI_CONTAINERD_COMMIT
+#WORKDIR  /go/src/github.com/containerd/cri-containerd
+#RUN make BUILD_TAGS="" && make install
 RUN mkdir -p /etc/cni/net.d
 COPY 10-containerd-net.conflist /etc/cni/net.d/
 COPY cri-c8d-run.sh /
