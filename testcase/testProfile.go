@@ -3,10 +3,11 @@ package testcase
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"runtime"
 	"time"
 
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
+	"github.com/kunalkushwaha/ctr-powertest/pkg/identity"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -19,6 +20,10 @@ type profileData struct {
 	minCreate, minStart, minStop, minDel time.Duration
 	avgCreate, avgStart, avgStop, avgDel time.Duration
 	maxCreate, maxStart, maxStop, maxDel time.Duration
+}
+
+type pData struct {
+	create, start, stop, del time.Duration
 }
 
 func (t *ProfileContainerTest) RunTestCases(ctx context.Context, testcases, args []string) error {
@@ -45,60 +50,79 @@ func (t *ProfileContainerTest) TestPullContainerImage(ctx context.Context, image
 
 func (t *ProfileContainerTest) TestCreateRunningContainers(ctx context.Context, containerName, imageName string) error {
 
+	//
 	data := new(profileData)
+	statq := make(chan pData)
+	pctx := PowertestContext(ctx)
 
-	for i := 0; i <= 50; i++ {
+	testcount := 50
 
-		createStartTime := time.Now()
-		ctr, err := t.Runtime.Create(ctx, containerName+strconv.Itoa(i+5010), imageName, nil)
-		if err != nil {
-			return errors.Wrap(err, "failed to create")
-		}
-		createTotalTime := time.Now().Sub(createStartTime)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go func(pctx context.Context, i int, imageName string, statq chan pData) {
+			for i := 0; i <= testcount; i++ {
+				cName := identity.NewID()
+				createStartTime := time.Now()
+				ctr, err := t.Runtime.Create(pctx, cName, imageName, nil)
+				if err != nil {
+					log.Error(err, "failed to create")
+				}
+				createTotalTime := time.Now().Sub(createStartTime)
 
-		err = t.Runtime.Runnable(ctx, ctr)
-		if err != nil {
-			return errors.Wrap(err, "failed to check runnable")
-		}
+				err = t.Runtime.Runnable(pctx, ctr)
+				if err != nil {
+					log.Error(err, "failed to check runnable")
+				}
 
-		statusC, err := t.Runtime.Wait(ctx, ctr)
-		if err != nil {
-			return errors.Wrap(err, "failed to get wait")
-		}
+				statusC, err := t.Runtime.Wait(pctx, ctr)
+				if err != nil {
+					log.Error(err, "failed to get wait")
+				}
 
-		startStartTime := time.Now()
-		err = t.Runtime.Start(ctx, ctr)
-		if err != nil {
-			return errors.Wrap(err, "failed to start container")
-		}
-		startTotalTime := time.Now().Sub(startStartTime)
+				startStartTime := time.Now()
+				err = t.Runtime.Start(pctx, ctr)
+				if err != nil {
+					log.Error(err, "failed to start container")
+				}
+				startTotalTime := time.Now().Sub(startStartTime)
 
-		waitForContainerEvent(statusC)
+				waitForContainerEvent(statusC)
 
-		stopStartTime := time.Now()
-		err = t.Runtime.Stop(ctx, ctr)
-		if err != nil {
-			return errors.Wrap(err, "failed to stop container")
-		}
-		stopTotalTime := time.Now().Sub(stopStartTime)
+				stopStartTime := time.Now()
+				err = t.Runtime.Stop(pctx, ctr)
+				if err != nil {
+					log.Error(err, "failed to stop container")
+				}
+				stopTotalTime := time.Now().Sub(stopStartTime)
 
-		deleteStartTime := time.Now()
-		err = t.Runtime.Delete(ctx, ctr)
-		if err != nil {
-			return errors.Wrap(err, "failed to delete container")
-		}
-		deleteTotalTime := time.Now().Sub(deleteStartTime)
+				deleteStartTime := time.Now()
+				err = t.Runtime.Delete(ctx, ctr)
+				if err != nil {
+					log.Error(err, "failed to delete container")
+				}
+				deleteTotalTime := time.Now().Sub(deleteStartTime)
 
-		data = updateProfileData(data, createTotalTime, startTotalTime, stopTotalTime, deleteTotalTime)
+				statq <- pData{create: createTotalTime, start: startTotalTime, stop: stopTotalTime, del: deleteTotalTime}
 
+			}
+		}(pctx, i, imageName, statq)
 	}
-	fmt.Println("\nContainer Profile data\n")
+
+	totalRun := testcount * runtime.NumCPU()
+
+	for i := 0; i < totalRun; i++ {
+		res := <-statq
+		data = updateProfileData(data, res.create, res.start, res.stop, res.stop)
+	}
+
+	fmt.Printf("\nContainer Profile data for %d runs for %d CPU's \n", totalRun, runtime.NumCPU())
 	fmt.Printf("\tCreate\tStart\tStop\tDelete\n")
 	fmt.Printf("Min\t%.2fs\t%.2fs\t%.2fs\t%.2fs\n", data.minCreate.Seconds(), data.minStart.Seconds(), data.minStop.Seconds(), data.minDel.Seconds())
-	fmt.Printf("Avg\t%.2fs\t%.2fs\t%.2fs\t%.2fs\n", data.avgCreate.Seconds()/50, data.avgStart.Seconds()/50, data.avgStop.Seconds()/50, data.avgDel.Seconds()/50)
+	fmt.Printf("Avg\t%.2fs\t%.2fs\t%.2fs\t%.2fs\n", data.avgCreate.Seconds()/float64(totalRun), data.avgStart.Seconds()/float64(totalRun), data.avgStop.Seconds()/float64(totalRun), data.avgDel.Seconds()/float64(totalRun))
 	fmt.Printf("Max\t%.2fs\t%.2fs\t%.2fs\t%.2fs\n", data.maxCreate.Seconds(), data.maxStart.Seconds(), data.maxStop.Seconds(), data.maxDel.Seconds())
 	fmt.Printf("Total\t%.2fs\t%.2fs\t%.2fs\t%.2fs\n", data.avgCreate.Seconds(), data.avgStart.Seconds(), data.avgStop.Seconds(), data.avgDel.Seconds())
+
 	return nil
+
 }
 
 func updateProfileData(base *profileData, create, start, stop, delete time.Duration) *profileData {

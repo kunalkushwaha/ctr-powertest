@@ -20,8 +20,8 @@ type CRIRuntime struct {
 var (
 	defaultSandboxName     = "powertestPod"
 	defaultPodID           = "powertestPod"
-	defaultSanboxConfig    = "contrib/crio/sandbox_config.json"
-	defaultContainerConfig = "contrib/crio/container_config.json"
+	defaultSanboxConfig    = "contrib/cri/sandbox_config.json"
+	defaultContainerConfig = "contrib/cri/container_config.json"
 	defaultTimeout         = time.Duration(time.Second * 10)
 )
 

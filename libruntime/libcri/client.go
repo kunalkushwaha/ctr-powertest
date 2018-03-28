@@ -76,7 +76,7 @@ func (cr *CRIRuntime) RemoveImage(ctx context.Context, imageName string) error {
 func (cr *CRIRuntime) Create(ctx context.Context, containerName string, imageName string, OCISpecs *runtimespecs.Spec) (*libruntime.Container, error) {
 
 	//TODO : Check if pod exist
-	podID, err := cr.CreateSandbox(ctx, "pod"+containerName, defaultPodID, defaultSanboxConfig)
+	podID, err := cr.CreateSandbox(ctx, "pod"+containerName, defaultPodID+containerName, defaultSanboxConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -190,12 +190,13 @@ func (cr *CRIRuntime) GetContainer(context.Context, string) (*libruntime.Contain
 func (cr *CRIRuntime) CreateSandbox(ctx context.Context, podName, podID, configFilePath string) (string, error) {
 	config, err := loadPodSandboxConfig(configFilePath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Pod creation error: %v", err)
 	}
 	config.Metadata.Name = podName
+	config.Metadata.Uid = podID
 	r, err := (*cr.RuntimeClient).RunPodSandbox(ctx, &pb.RunPodSandboxRequest{Config: config})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Pod run error: %v", err)
 	}
 	log.Debug("Pod Created: ", r.PodSandboxId)
 

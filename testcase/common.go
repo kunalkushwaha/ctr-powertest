@@ -68,3 +68,7 @@ func waitForContainerEvent(statusC <-chan interface{}) error {
 	}
 	return nil
 }
+
+func PowertestContext(ctx context.Context) context.Context {
+	return ctx
+}
