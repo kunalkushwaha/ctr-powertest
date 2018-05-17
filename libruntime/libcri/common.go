@@ -22,6 +22,7 @@ var (
 	defaultPodID           = "powertestPod"
 	defaultSanboxConfig    = "contrib/cri/sandbox_config.json"
 	defaultContainerConfig = "contrib/cri/container_config.json"
+	defaultPodConfig       = "contrib/cri/pod.yaml"
 	defaultTimeout         = time.Duration(time.Second * 10)
 )
 

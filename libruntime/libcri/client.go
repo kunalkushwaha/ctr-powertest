@@ -3,6 +3,7 @@ package libcri
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	runtimespecs "github.com/opencontainers/runtime-spec/specs-go"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	yaml "gopkg.in/yaml.v2"
 	pb "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
@@ -75,25 +77,36 @@ func (cr *CRIRuntime) RemoveImage(ctx context.Context, imageName string) error {
 
 func (cr *CRIRuntime) Create(ctx context.Context, containerName string, imageName string, OCISpecs *runtimespecs.Spec) (*libruntime.Container, error) {
 
-	//TODO : Check if pod exist
-	podID, err := cr.CreateSandbox(ctx, "pod"+containerName, defaultPodID+containerName, defaultSanboxConfig)
+	data, err := ioutil.ReadFile(defaultPodConfig)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 
-	log.Debug(podID)
-	//TODO: Instead of reading from config file, build ContainerConfig from specs.
+	podConfig := PodConfig{}
 
-	config, err := loadContainerConfig(defaultContainerConfig)
+	err = yaml.Unmarshal(data, &podConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	config, err := PodConfig2ContainerConfig(&podConfig)
 	if err != nil {
 		return nil, err
 	}
 	config.Metadata.Name = containerName
 
-	sandboxConfig, err := loadPodSandboxConfig(defaultSanboxConfig)
+	sandboxConfig, err := PodConfig2PodSandboxConfig(&podConfig)
 	if err != nil {
 		return nil, err
 	}
+
+	//TODO : Check if pod exist
+	podID, err := cr.CreateSandbox(ctx, "pod"+containerName, defaultPodID+containerName, sandboxConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug(podID)
 
 	startTime := time.Now()
 	r, err := (*cr.RuntimeClient).CreateContainer(ctx, &pb.CreateContainerRequest{
@@ -187,13 +200,13 @@ func (cr *CRIRuntime) GetContainer(context.Context, string) (*libruntime.Contain
 	return nil, nil
 }
 
-func (cr *CRIRuntime) CreateSandbox(ctx context.Context, podName, podID, configFilePath string) (string, error) {
-	config, err := loadPodSandboxConfig(configFilePath)
-	if err != nil {
-		return "", fmt.Errorf("Pod creation error: %v", err)
-	}
+func (cr *CRIRuntime) CreateSandbox(ctx context.Context, podName, podID string, config *pb.PodSandboxConfig) (string, error) {
+
 	config.Metadata.Name = podName
 	config.Metadata.Uid = podID
+	config.Linux.SecurityContext.NamespaceOptions.Network = pb.NamespaceMode_NODE
+	//	fmt.Println("-------------- Pod Config -----------------------")
+	//	fmt.Println(config)
 	r, err := (*cr.RuntimeClient).RunPodSandbox(ctx, &pb.RunPodSandboxRequest{Config: config})
 	if err != nil {
 		return "", fmt.Errorf("Pod run error: %v", err)

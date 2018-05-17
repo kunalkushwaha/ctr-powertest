@@ -3,9 +3,9 @@ package testcase
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"time"
 
+	"github.com/kunalkushwaha/ctr-powertest/libocispec"
 	"github.com/kunalkushwaha/ctr-powertest/libruntime"
 	"github.com/kunalkushwaha/ctr-powertest/pkg/identity"
 	"github.com/pkg/errors"
@@ -54,15 +54,23 @@ func (t *ProfileContainerTest) TestCreateRunningContainers(ctx context.Context, 
 	data := new(profileData)
 	statq := make(chan pData)
 	pctx := PowertestContext(ctx)
+	cupCount := 4 //runtime.NumCPU()
 
 	testcount := 50
 
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < cupCount; i++ {
 		go func(pctx context.Context, i int, imageName string, statq chan pData) {
+
 			for i := 0; i <= testcount; i++ {
+				specs, err := libocispec.GenerateSpec(libocispec.WithProcessArgs("sleep", "40s"))
+				if err != nil {
+					log.Error(err, "failed to create specs")
+					return
+				}
 				cName := identity.NewID()
 				createStartTime := time.Now()
-				ctr, err := t.Runtime.Create(pctx, cName, imageName, nil)
+
+				ctr, err := t.Runtime.Create(pctx, cName, imageName, specs)
 				if err != nil {
 					log.Error(err, "failed to create")
 				}
@@ -107,14 +115,14 @@ func (t *ProfileContainerTest) TestCreateRunningContainers(ctx context.Context, 
 		}(pctx, i, imageName, statq)
 	}
 
-	totalRun := testcount * runtime.NumCPU()
+	totalRun := testcount * cupCount
 
 	for i := 0; i < totalRun; i++ {
 		res := <-statq
 		data = updateProfileData(data, res.create, res.start, res.stop, res.stop)
 	}
 
-	fmt.Printf("\nContainer Profile data for %d runs for %d CPU's \n", totalRun, runtime.NumCPU())
+	fmt.Printf("\nContainer Profile data for %d runs for %d CPU's \n", totalRun, cupCount)
 	fmt.Printf("\tCreate\tStart\tStop\tDelete\n")
 	fmt.Printf("Min\t%.2fs\t%.2fs\t%.2fs\t%.2fs\n", data.minCreate.Seconds(), data.minStart.Seconds(), data.minStop.Seconds(), data.minDel.Seconds())
 	fmt.Printf("Avg\t%.2fs\t%.2fs\t%.2fs\t%.2fs\n", data.avgCreate.Seconds()/float64(totalRun), data.avgStart.Seconds()/float64(totalRun), data.avgStop.Seconds()/float64(totalRun), data.avgDel.Seconds()/float64(totalRun))

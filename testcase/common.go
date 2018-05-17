@@ -59,7 +59,7 @@ func waitForContainerEvent(statusC <-chan interface{}) error {
 	switch p := status.(type) {
 	case containerd.ExitStatus:
 		if p.ExitCode() != 0 {
-			log.Info(p.Result())
+			log.Error(p.Result())
 			err := p.Error()
 			return err
 		}

@@ -32,6 +32,12 @@ var stdCRIContainerdConfig = libruntime.RuntimeConfig{
 	RuntimeEndpoint:  "/run/containerd/containerd.sock",
 }
 
+var stdCRIDockershimConfig = libruntime.RuntimeConfig{
+	RuntimeName:      "dockershim",
+	RunDefaultServer: false,
+	RuntimeEndpoint:  "/run/dockershim.sock",
+}
+
 func initTestSuite(cmd *cobra.Command) {
 	var err error
 
@@ -56,9 +62,12 @@ func initTestSuite(cmd *cobra.Command) {
 		var config libruntime.RuntimeConfig
 		if runtime == "crio" {
 			config = stdCRIOConfig
+		} else if runtime == "dockershim" {
+			config = stdCRIDockershimConfig
 		} else {
 			config = stdCRIContainerdConfig
 		}
+
 		ctrRuntime, err = testcase.SetupTestEnvironment(ctx, proto, config, false)
 		if err != nil {
 			log.Fatal("Error while setting up environment : ", err)
