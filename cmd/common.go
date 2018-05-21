@@ -38,6 +38,17 @@ var stdCRIDockershimConfig = libruntime.RuntimeConfig{
 	RuntimeEndpoint:  "/run/dockershim.sock",
 }
 
+var stdCRIFraktiConfig = libruntime.RuntimeConfig{
+	RuntimeName:      "frakti",
+	RunDefaultServer: false,
+	RuntimeEndpoint:  "/run/frakti.sock",
+}
+var stdCRIRktletConfig = libruntime.RuntimeConfig{
+	RuntimeName:      "rktlet",
+	RunDefaultServer: false,
+	RuntimeEndpoint:  "/run/rktlet.sock",
+}
+
 func initTestSuite(cmd *cobra.Command) {
 	var err error
 
@@ -64,6 +75,10 @@ func initTestSuite(cmd *cobra.Command) {
 			config = stdCRIOConfig
 		} else if runtime == "dockershim" {
 			config = stdCRIDockershimConfig
+		} else if runtime == "frakti" {
+			config = stdCRIFraktiConfig
+		} else if runtime == "rktlet" {
+			config = stdCRIRktletConfig
 		} else {
 			config = stdCRIContainerdConfig
 		}
