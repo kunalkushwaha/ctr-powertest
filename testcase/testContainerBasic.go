@@ -20,6 +20,9 @@ func (t *BasicContainerTest) RunTestCases(ctx context.Context, testcases, args [
 	if err := t.TestPullContainerImage(ctx, testImage); err != nil {
 		return err
 	}
+	
+	//time.Sleep(8 * time.Second)
+
 	if err := t.TestCreateContainers(ctx, "test", testImage); err != nil {
 		return err
 	}
@@ -29,6 +32,7 @@ func (t *BasicContainerTest) RunTestCases(ctx context.Context, testcases, args [
 	if err := t.TestCreateRunningNWaitContainers(ctx, testContainerName, testImage); err != nil {
 		return err
 	}
+	
 	return nil
 }
 
@@ -57,6 +61,7 @@ func (t *BasicContainerTest) TestCreateContainers(ctx context.Context, container
 	// Test without tty container
 	// Test background container.
 	log.Info("TestCreateContainers..")
+	startTime := time.Now()
 	ctr, err := t.Runtime.Create(ctx, containerName, imageName, nil)
 	if err != nil {
 		return err
@@ -66,30 +71,36 @@ func (t *BasicContainerTest) TestCreateContainers(ctx context.Context, container
 	if err != nil {
 		return err
 	}
+	totalTime := time.Now().Sub(startTime)
+	log.Infof("%d containers in %s ", 1, totalTime.String())
 	log.Info("OK..")
 	return nil
 }
 
 func (t *BasicContainerTest) TestCreateRunningContainers(ctx context.Context, containerName, imageName string) error {
 	log.Info("TestCreateRunningContainers..")
-	startTime := time.Now()
+	//startTime := time.Now()
 	statusC, ctr, err := t.Runtime.Run(ctx, containerName, imageName, nil)
 	if err != nil {
 		return err
 	}
 
+	StopstartTime := time.Now()
 	err = t.Runtime.Stop(ctx, ctr)
 	if err != nil {
 		return fmt.Errorf("Container Stop: %v", err)
 	}
+	stopTotalTime := time.Now().Sub(StopstartTime)
+	log.Infof("Stop time: %d containers in %s ", 1, stopTotalTime.String())
 
 	waitForContainerEvent(statusC)
 
+	deleteTime := time.Now()
 	err = t.Runtime.Delete(ctx, ctr)
 	if err != nil {
 		return fmt.Errorf("Container Delete: %v", err)
 	}
-	totalTime := time.Now().Sub(startTime)
+	totalTime := time.Now().Sub(deleteTime)
 	log.Infof("%d containers in %s ", 1, totalTime.String())
 	log.Info("OK..")
 	return nil

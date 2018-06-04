@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	testImage         = "docker.io/library/alpine:latest"
+	testImage         = "ubuntu:latest"
+	//testImage         = "docker.io/library/ubuntu:latest"
 	testContainerName = "test-powertest"
 )
 

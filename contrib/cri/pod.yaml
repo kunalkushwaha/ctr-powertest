@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx24
+  name: nginx2234
   annotations:
     io.kubernetes.cri.untrusted-workload: "true"
 spec:
   containers:
-  - name: nginx
-    image: docker.io/library/nginx:latest
+  - name: nginx1212
+    image: ubuntu:latest

@@ -97,14 +97,16 @@ func PodConfig2PodSandboxConfig(podConfig *PodConfig) (*pb.PodSandboxConfig, err
 
 	sandboxConfig.Metadata.Name = podConfig.Metadata.Name
 	sandboxConfig.Metadata.Uid = podConfig.Metadata.Name
-	sandboxConfig.Metadata.Namespace = "ctr-powertest"
+	sandboxConfig.Metadata.Namespace = "k8s.io"
 	sandboxConfig.Hostname = podConfig.Metadata.Name
 	//sandboxConfig.Labels
-	//sandboxConfig.Linux.SecurityContext.Privileged
+	//sandboxConfig.Linux.SecurityContext.Privileged = true
 	//sandboxConfig.Linux.SecurityContext.RunAsGroup
 	//sandboxConfig.Linux.SecurityContext.RunAsUser
 	//sandboxConfig.Linux.SecurityContext.ReadonlyRootfs
-	sandboxConfig.Linux.SecurityContext.NamespaceOptions.Network = pb.NamespaceMode_NODE
+	//sandboxConfig.Linux.SecurityContext.NamespaceOptions.Network = pb.NamespaceMode_NODE
+	//sandboxConfig.Linux.SecurityContext.NamespaceOptions.Network = pb.NamespaceMode_POD
+	sandboxConfig.Linux.SecurityContext.NamespaceOptions.Network = pb.NamespaceMode_CONTAINER
 	//sandboxConfig.LogDirectory
 	return sandboxConfig, nil
 }

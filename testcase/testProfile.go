@@ -62,7 +62,7 @@ func (t *ProfileContainerTest) TestCreateRunningContainers(ctx context.Context, 
 		go func(pctx context.Context, i int, imageName string, statq chan pData) {
 
 			for i := 0; i <= testcount; i++ {
-				specs, err := libocispec.GenerateSpec(libocispec.WithProcessArgs("sleep", "40s"))
+				specs, err := libocispec.GenerateSpec(libocispec.WithProcessArgs("sh"))
 				if err != nil {
 					log.Error(err, "failed to create specs")
 					return
@@ -119,7 +119,7 @@ func (t *ProfileContainerTest) TestCreateRunningContainers(ctx context.Context, 
 
 	for i := 0; i < totalRun; i++ {
 		res := <-statq
-		data = updateProfileData(data, res.create, res.start, res.stop, res.stop)
+		data = updateProfileData(data, res.create, res.start, res.stop, res.del)
 	}
 
 	fmt.Printf("\nContainer Profile data for %d runs for %d CPU's \n", totalRun, cupCount)
